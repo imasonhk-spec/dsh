@@ -1,0 +1,26 @@
+# /etc/systemd/system/dsh-web.service
+# 由 deploy 渲染自 dsh-web.service.tmpl
+[Unit]
+Description=DeepSeek Harness Web UI (DSH stack)
+After=network.target
+After=raganything-sidecar.service
+
+[Service]
+Environment=DSH_WEB_TOKEN={{DSH_WEB_TOKEN}}
+Environment=TZ={{TZ}}
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment="DSH_MU_TRUST_PROXY=1"
+# 把知识库插件挂到每个用户 profile（{home}/{sidecarPort} 由 harness 在创建用户时替换）
+Environment="DSH_MU_USER_PROFILE_PATCH=- { id: raganything-kb, config: { ragHome: {home}/raganything, sidecarPort: {sidecarPort}, autoStart: true } }"
+Environment="DSH_MU_USER_SEED_LINKS={\"raganything/venv\":\"/home/{{DSH_USER}}/.dsh/raganything/venv\",\"raganything/models\":\"/home/{{DSH_USER}}/.dsh/raganything/models\"}"
+Type=simple
+User={{DSH_USER}}
+WorkingDirectory={{HARNESS_DIR}}
+# 仅监听 loopback；对外经 nginx(:3082) 反代。--trusted-host 放 nginx 的端口，
+# 使经 nginx 转发的请求通过 Host 围栏校验。
+ExecStart=/usr/local/bin/pnpm dsh web --host 127.0.0.1 --port {{DSH_WEB_PORT}} --trusted-host {{DSH_HOST_IP}}:{{DSH_NGINX_HTTPS_PORT}} --trusted-host {{DSH_HOST_IP}}:{{DSH_NGINX_HTTP_PORT}}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

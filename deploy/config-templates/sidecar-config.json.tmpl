@@ -1,0 +1,56 @@
+{
+  "host": "127.0.0.1",
+  "port": {{RAG_SIDECAR_PORT}},
+  "working_dir": "{{DSH_HOME}}/raganything/working_dir",
+  "output_dir": "{{DSH_HOME}}/raganything/output_dir",
+  "parser": "mineru",
+  "parse_method": "auto",
+  "max_concurrent_tasks": 4,
+  "llm": {
+    "base_url": "{{RAG_LLM_BASE_URL}}",
+    "model": "{{RAG_LLM_MODEL}}"
+  },
+  "vision": {
+    "base_url": "{{RAG_VISION_BASE_URL}}",
+    "model": "{{RAG_VISION_MODEL}}"
+  },
+  "embedding": {
+    "backend": "gguf",
+    "model": "bge-m3",
+    "model_path": "{{RAG_EMBEDDING_MODEL_PATH}}",
+    "dims": 1024,
+    "max_token_size": 8192
+  },
+  "enable_audio_processing": false,
+  "rerank": {
+    "enabled": true,
+    "backend": "transformers",
+    "model": "bge-reranker-v2-m3",
+    "model_path": "{{RAG_RERANK_MODEL_PATH}}",
+    "device": "cpu",
+    "max_length": 512
+  },
+  "lightrag": {
+    "max_parallel_insert": 3,
+    "chunk_token_size": 6000,
+    "chunk_overlap_token_size": 200,
+    "embedding_batch_num": 16,
+    "embedding_func_max_async": 4,
+    "entity_extract_max_gleaning": 1,
+    "index_llm_model": "{{RAG_LLM_MODEL}}",
+    "default_llm_timeout": 900,
+    "default_embedding_timeout": 300,
+    "index_reasoning_effort": "none"
+  },
+  "asr": {
+    "backend": "sensevoice",
+    "model": "{{RAG_ASR_MODEL_PATH}}",
+    "device": "cpu"
+  },
+  "workspace_sync": {
+    "enabled": false,
+    "interval_s": 900,
+    "first_delay_s": 60
+  },
+  "models_dir": "{{DSH_HOME}}/raganything/models"
+}

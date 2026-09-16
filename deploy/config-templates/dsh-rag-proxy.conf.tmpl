@@ -1,0 +1,34 @@
+# /etc/nginx/dsh-rag-proxy.conf
+# 由 deploy 渲染自 dsh-rag-proxy.conf.tmpl
+# dsh-raganything-kb 知识库 sidecar 的同源反向代理。
+#
+# ⚠️ 隔离红线：这里绝不能直连 127.0.0.1:{{RAG_SIDECAR_PORT}}（宿主 sidecar）。
+# 登录后的页面路径是 "/"，插件 bundle 的 ragBaseUrl() 匹配不到 /mu/<账号> 前缀，
+# 会退化为 ${location.origin}/rag。一旦 nginx 把 /rag/ 直接接到宿主 sidecar，
+# 所有账号的知识库面板就读写同一个库 —— 隔离失效。必须交给 dsh-multi-user
+# 网关(:{{DSH_MU_PORT}})：它按会话 cookie 判定身份，再转发到该账号自己的
+# sidecar 端口(32000+slot)，并等待冷启动 bind 完成。
+location /rag/ {
+    proxy_pass http://127.0.0.1:{{DSH_MU_PORT}}/mu/rag/;
+    proxy_http_version 1.1;
+    proxy_set_header Host              $http_host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header Upgrade           $http_upgrade;
+    proxy_set_header Connection        "upgrade";
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    client_max_body_size 512m;
+}
+
+location = /rag {
+    proxy_pass http://127.0.0.1:{{DSH_MU_PORT}}/mu/rag;
+    proxy_http_version 1.1;
+    proxy_set_header Host              $http_host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+}

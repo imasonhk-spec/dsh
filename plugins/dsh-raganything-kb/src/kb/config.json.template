@@ -1,0 +1,41 @@
+{
+  "host": "0.0.0.0",
+  "port": 17321,
+  "working_dir": "__RAG_HOME__/storage",
+  "output_dir": "__RAG_HOME__/output",
+  "models_dir": "__RAG_HOME__/models",
+  "parser": "mineru",
+  "parse_method": "auto",
+  "parser_backend": "pipeline",
+  "parser_timeout_s": 900,
+  "max_concurrent_tasks": 2,
+  "llm": {
+    "base_url": "https://tokens.store/v1",
+    "model": "deepseek-v4-flash"
+  },
+  "vision": {
+    "base_url": "https://tokens.store/v1",
+    "model": "glm-5.3-flash"
+  },
+  "embedding": {
+    "backend": "gguf",
+    "model": "bge-m3-f16.gguf",
+    "model_path": "__RAG_HOME__/models/bge-m3-f16/bge-m3-FP16.gguf",
+    "dims": 1024,
+    "max_token_size": 8192
+  },
+  "enable_audio_processing": false,
+  "rerank": {
+    "enabled": false
+  },
+  "lightrag": {
+    "max_parallel_insert": 4,
+    "chunk_token_size": 2000,
+    "chunk_overlap_token_size": 200,
+    "embedding_batch_num": 16,
+    "entity_extract_max_gleaning": 1,
+    "index_llm_model": "deepseek-v4-flash",
+    "default_llm_timeout": 900,
+    "default_embedding_timeout": 300
+  }
+}

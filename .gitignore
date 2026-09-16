@@ -1,0 +1,43 @@
+# ===================== 构建 / 依赖 =====================
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# ===================== 打包产物 =====================
+*.tgz
+*.tar.gz
+releases/
+.tmp_*/
+tmp_*
+
+# ===================== 密钥 / 运行时状态（严禁提交） =====================
+.env
+.env.*
+!.env.example
+*.local.yaml
+credentials.yaml
+sessions/
+storages/
+settings.yaml
+
+# ===================== 用户数据 / RAG 工作目录（严禁提交） =====================
+raganything/working_dir/
+raganything/output_dir/
+raganything/logs/
+multi-user/users/
+profiles/web/node_modules/
+*/data/
+
+# ===================== Python =====================
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ===================== 临时 / 备份 =====================
+*.bak
+*.bak-*
+*.log
+.DS_Store

@@ -1,0 +1,23 @@
+[Unit]
+Description=RAG-Anything sidecar (dsh-raganything-kb)
+Documentation=https://github.com/HKUDS/RAG-Anything
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__WORKDIR__
+EnvironmentFile=__ENVFILE__
+Environment=PATH=__VENVBIN__:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__VENV__ server.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+StandardOutput=append:__LOGDIR__/sidecar.log
+StandardError=append:__LOGDIR__/sidecar.log
+
+[Install]
+WantedBy=multi-user.target

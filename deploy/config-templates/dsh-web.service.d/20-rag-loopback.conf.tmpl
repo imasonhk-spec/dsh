@@ -1,0 +1,13 @@
+# /etc/systemd/system/dsh-web.service.d/20-rag-loopback.conf
+# 2026-09-14  RAG sidecar 收回 loopback（隔离红线）
+#
+# 隔离此前只做在网关层：/rag/* 按会话路由到本账号 sidecar。但 sidecar 自身监听
+# 0.0.0.0 且未配置 token，于是同网段任何主机都能直连 17321/32xxx 读到宿主库与
+# 共享库清单，隔离被完全绕过。
+#
+# HOST 取值顺序：RAG_SIDECAR_HOST 环境变量 > config["host"]。放环境变量只需一处：
+# 宿主进程带上了，supervisor 用 {...process.env} spawn 出来的用户实例会自动继承，
+# 所有用户 config.json 一份都不用动。正常链路（网关 /rag/* 转发、用户实例 /shared/*
+# 转发到宿主 17321）走的都是 127.0.0.1，不受影响。
+[Service]
+Environment="RAG_SIDECAR_HOST=127.0.0.1"

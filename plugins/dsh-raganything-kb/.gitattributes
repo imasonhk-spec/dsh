@@ -1,0 +1,13 @@
+# Force LF everywhere. 0.3.6 shipped `uninstall.sh` with CRLF and it could not
+# run on Linux at all ("syntax error near unexpected token `in\r'"), so line
+# endings are treated as a correctness issue in this repo, not a preference.
+* text=auto eol=lf
+
+# genuine binaries, never touched
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.tgz  binary
+*.gz   binary
+*.bundle binary

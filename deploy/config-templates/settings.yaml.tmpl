@@ -1,0 +1,22 @@
+# {{DSH_HOME}}/settings.yaml  (deploy 渲染自 settings.yaml.tmpl)
+#
+# 这是 DSH 全局「设置→模型」的最小 provider 骨架。base_url / api_key 用 .env 填充。
+# 更多模型（对话、嵌入、重排、视觉）建议在 Web 面板「设置→模型」里逐项添加，
+# 面板写入的就是这个文件。以下 ollama provider 作为默认示例。
+llm-pi-ai:
+  providers:
+    ollama:
+      displayName: Ollama (本地)
+      api: openai-completions
+      baseURL: {{LLM_PROVIDER_BASE_URL}}
+      # Ollama 的 OpenAI 兼容端点不校验 auth；塞一个占位 Authorization，
+      # 避免 pi-ai 的 openai-completions 适配器报 "No API key for provider"。
+      headers:
+        authorization: Bearer {{LLM_PROVIDER_API_KEY}}
+      models:
+        - id: {{RAG_LLM_MODEL}}
+          name: {{RAG_LLM_MODEL}}
+          contextWindow: 131072
+        - id: {{RAG_VISION_MODEL}}
+          name: {{RAG_VISION_MODEL}}
+          contextWindow: 131072

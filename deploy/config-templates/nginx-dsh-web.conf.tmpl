@@ -1,0 +1,55 @@
+# /etc/nginx/sites-enabled/dsh-web  (或 conf.d/dsh-web.conf)
+# 由 deploy 渲染自 nginx-dsh-web.conf.tmpl
+# 对外唯一入口：TLS :{{DSH_NGINX_HTTPS_PORT}} -> 反代 dsh-web 多用户网关 :{{DSH_MU_PORT}}
+server {
+    listen {{DSH_NGINX_HTTP_PORT}};
+    server_name _;
+    return 302 https://$host:{{DSH_NGINX_HTTPS_PORT}}$request_uri;
+}
+
+server {
+    include /etc/nginx/dsh-rag-proxy.conf;
+    listen {{DSH_NGINX_HTTPS_PORT}} ssl;
+    server_name _;
+
+    ssl_certificate     {{SSL_CERT_PATH}};
+    ssl_certificate_key {{SSL_KEY_PATH}};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+
+    client_max_body_size 64m;
+    proxy_buffering off;
+    proxy_request_buffering off;
+
+    # dsh-multi-user 安全写法：不要按 URL 里的用户名直连 sidecar（那个 location
+    # 不校验会话，任意登录用户把用户名换成别人/ admin 就能读别人的库）。统一改写成
+    # 网关路径 /mu/rag/*，由 :{{DSH_MU_PORT}} 按会话 cookie 判定身份后再转发。
+    location ~ ^/mu/[^/]+/rag/?(.*)$ {
+        set $rag_user $1;
+        rewrite ^/mu/[^/]+/rag/?(.*)$ /mu/rag/$1 break;
+        proxy_pass http://127.0.0.1:{{DSH_MU_PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        client_max_body_size 512m;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:{{DSH_MU_PORT}};
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}

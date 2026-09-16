@@ -1,0 +1,25 @@
+# /etc/systemd/system/raganything-sidecar.service
+# 由 deploy 渲染自 raganything-sidecar.service.tmpl
+[Unit]
+Description=RAG-Anything sidecar (dsh-raganything-kb)
+Documentation=https://github.com/HKUDS/RAG-Anything
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{DSH_USER}}
+WorkingDirectory={{DSH_HOME}}/profiles/web/node_modules/dsh-raganything-kb/sidecar
+EnvironmentFile={{DSH_HOME}}/raganything/sidecar.env
+Environment=PATH={{DSH_HOME}}/raganything/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart={{DSH_HOME}}/raganything/venv/bin/python server.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+StandardOutput=append:{{DSH_HOME}}/raganything/logs/sidecar.log
+StandardError=append:{{DSH_HOME}}/raganything/logs/sidecar.log
+
+[Install]
+WantedBy=multi-user.target
