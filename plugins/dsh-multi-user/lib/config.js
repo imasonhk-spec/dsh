@@ -47,6 +47,9 @@ export const DEFAULTS = {
   portScanRange: 200,
   /** Login session lifetime, hours. */
   sessionTtlHours: 24,
+  /** Remaining lifetime (hours) below which a used session is renewed to a full
+   *  TTL on its next request. `0` disables sliding renewal. */
+  sessionRenewThresholdHours: 6,
   /** Idle minutes after which a spawned per-user instance is stopped. `0` disables reaping. */
   idleTimeoutMinutes: 30,
   /** Seconds to wait for a freshly spawned DSH instance to answer before giving up. */
@@ -74,6 +77,14 @@ export const DEFAULTS = {
    * makes "admin installs a plugin → users get it on their next page load" work.
    */
   syncProfileOnStart: true,
+  /**
+   * Mirror the administrator's model catalogue (`llm-pi-ai:`) into every other
+   * account's `settings.yaml`, so an account only ever picks from the models the
+   * administrator published instead of the ones it happened to be seeded with.
+   * The account's own `agent-default-model` choice is left alone. Setting this
+   * to `false` freezes each account at whatever it was seeded with.
+   */
+  inheritAdminModels: true,
   /**
    * Minimum milliseconds between two host-application-set checks. The check
    * itself only hashes a handful of small files, but this keeps a busy gateway
@@ -231,6 +242,7 @@ export function resolveConfig(raw = {}, options = {}) {
   config.hostTokenEnv = coerceString(pick(raw, env, 'hostTokenEnv', coerceString), DEFAULTS.hostTokenEnv)
   config.portScanRange = coerceNumber(pick(raw, env, 'portScanRange', coerceNumber), DEFAULTS.portScanRange)
   config.sessionTtlHours = coerceNumber(pick(raw, env, 'sessionTtlHours', coerceNumber), DEFAULTS.sessionTtlHours)
+  config.sessionRenewThresholdHours = coerceNumber(pick(raw, env, 'sessionRenewThresholdHours', coerceNumber), DEFAULTS.sessionRenewThresholdHours)
   config.idleTimeoutMinutes = coerceNumber(pick(raw, env, 'idleTimeoutMinutes', coerceNumber), DEFAULTS.idleTimeoutMinutes)
   config.startTimeoutSeconds = coerceNumber(pick(raw, env, 'startTimeoutSeconds', coerceNumber), DEFAULTS.startTimeoutSeconds)
   config.proxyTimeoutMs = coerceNumber(pick(raw, env, 'proxyTimeoutMs', coerceNumber), DEFAULTS.proxyTimeoutMs)
@@ -241,6 +253,7 @@ export function resolveConfig(raw = {}, options = {}) {
   // falling back to the conventional "web" profile name.
   config.profile = coerceString(pick(raw, env, 'profile', coerceString) ?? env.DSH_PROFILE, 'web')
   config.syncProfileOnStart = pick(raw, env, 'syncProfileOnStart', coerceBoolean)
+  config.inheritAdminModels = pick(raw, env, 'inheritAdminModels', coerceBoolean)
   config.appSyncIntervalMs = coerceNumber(pick(raw, env, 'appSyncIntervalMs', coerceNumber), DEFAULTS.appSyncIntervalMs)
   config.minPasswordLength = coerceNumber(pick(raw, env, 'minPasswordLength', coerceNumber), DEFAULTS.minPasswordLength)
   config.sidecarPortBase = coerceNumber(pick(raw, env, 'sidecarPortBase', coerceNumber), DEFAULTS.sidecarPortBase)
