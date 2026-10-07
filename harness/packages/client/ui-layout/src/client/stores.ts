@@ -67,12 +67,11 @@ type LayoutActions = {
 }
 
 /**
- * Create the layout panel store handle. For the sidebar the preference IS the
- * width, so closing it forgets its drag width — reopening restores the contract
- * default. The right panel initializes at 45% of the frame on first opening
- * and keeps that px preference across resizes and close. Drag writes clamp to
- * the current frame's range. Narrow sidebar toggles change only the expansion
- * override; opening the right panel clears that override.
+ * Create the layout panel store handle. A fresh wide-screen page starts with
+ * the sidebar expanded to its default width; narrow screens keep their
+ * responsive auto-collapse behavior.
+ * The right panel initializes at 45% of the frame on first opening and keeps
+ * that px preference across resizes and close. Drag writes clamp to the frame.
  * @returns the store handle (spec + type + identity + factory in one).
  */
 export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutActions>  {

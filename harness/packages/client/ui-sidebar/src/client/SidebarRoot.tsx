@@ -17,9 +17,10 @@
  * pointing at carries no bar.
  */
 import { useEffect, useRef, useState } from 'react'
+import type { DragEvent } from 'react'
 import clsx from 'clsx'
 import {
-  FishLogo, IconNewChatOutline16, IconPanelLeftOutline16, Tooltip,
+  FishLogo, IconNewChatOutlineMedium, IconNewChatOutlineRegular, IconPanelLeftOutlineRegular, isDarwinDesktop, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
@@ -38,6 +39,36 @@ const COLLAPSE_SETTLE_MS = 150
  */
 const SCROLLBAR_LINGER_MS = 2000
 
+/** Capability navigation is scoped to the signed-in browser user, not a session. */
+function capabilityUserNamespace(): string {
+  const user = document.cookie.match(/(?:^|;\s*)dsh_mu_user=([^;]*)/)
+  let name = ''
+  try { name = decodeURIComponent(user?.[1] ?? '') } catch { /* invalid cookie */ }
+  return /^[A-Za-z0-9_-]{1,64}$/.test(name) ? `${name}.` : ''
+}
+function capabilityNavKey(): string { return `dsh.sidebar.capabilities.${capabilityUserNamespace()}v1` }
+function loadedCapabilityKey(): string { return `dsh.workbench.loaded.${capabilityUserNamespace()}v1` }
+function readLoadedCapabilities(): Record<string, boolean> {
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(loadedCapabilityKey()) ?? '{}')
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, boolean>
+  } catch { /* storage unavailable or malformed */ }
+  return {}
+}
+
+interface CapabilityNavState { expanded: boolean; order: string[] }
+function readCapabilityNav(): CapabilityNavState {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(capabilityNavKey()) ?? '{}') as Partial<CapabilityNavState>
+    return {
+      expanded: saved.expanded !== false,
+      order: Array.isArray(saved.order) ? saved.order.filter((id): id is string => typeof id === 'string' && id.startsWith('cap:')) : [],
+    }
+  } catch {
+    return { expanded: true, order: [] }
+  }
+}
+
 /** Format complete-build metadata for the local brand badge. */
 function localBuildVersion(): string | undefined {
   const version = process.env.DSH_CLIENT_VERSION
@@ -54,15 +85,16 @@ type PanelRowProps =
   & Pick<PropsRuntime<'sidebar'>, 'usePanelInfo'>
   & Pick<InjectFace<SidebarRootInjected>, 'selectPanel'>
   & PropsRenderSlots<'sidebar.panellist'>
+  & { capability?: boolean }
 
 /** Each panel row subscribes only to its own selection state. */
-function PanelRow({ id, label, wide, usePanelInfo, selectPanel, renderSlot }: PanelRowProps) {
+function PanelRow({ id, label, wide, usePanelInfo, selectPanel, renderSlot, capability = false }: PanelRowProps) {
   const active = usePanelInfo(info => info.activePanelId === id)
   return (
     <Tooltip label={label} delayMs={500} disabled={wide}>
       <button
         type="button"
-        className={clsx(css.panelRow, active && css.panelActive)}
+        className={clsx(css.panelRow, capability && css.capabilityRow, active && css.panelActive)}
         aria-label={label}
         aria-current={active ? 'page' : undefined}
         onClick={() => { selectPanel(id) }}
@@ -97,6 +129,46 @@ export function SidebarRoot({
   renderSlot,
 }: SidebarRootComponentProps) {
   const panels = usePanels(snapshot => snapshot)
+  const [capabilityNav, setCapabilityNav] = useState(readCapabilityNav)
+  const [loadedCapabilities, setLoadedCapabilities] = useState(readLoadedCapabilities)
+  const [draggedCapability, setDraggedCapability] = useState<string | null>(null)
+  const [dropCapability, setDropCapability] = useState<string | null>(null)
+  const capabilities = panels.filter(panel => panel.id.startsWith('cap:') && loadedCapabilities[panel.id.slice(4)] !== false)
+  const capabilityIndex = new Map(capabilityNav.order.map((id, index) => [id, index]))
+  const sortedCapabilities = [...capabilities].sort((left, right) => {
+    const a = capabilityIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER
+    const b = capabilityIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER
+    return a - b
+  })
+  const hasPlugins = panels.some(panel => panel.id === 'plugins')
+  const normalPanels = hasPlugins ? panels.filter(panel => !panel.id.startsWith('cap:')) : panels
+  const updateCapabilityNav = (next: CapabilityNavState): void => {
+    setCapabilityNav(next)
+    try { window.localStorage.setItem(capabilityNavKey(), JSON.stringify(next)) } catch { /* storage disabled */ }
+  }
+  const reorderCapability = (source: string, target: string): void => {
+    if (source === target) return
+    const ids: string[] = sortedCapabilities.map(item => item.id)
+    const from = ids.indexOf(source)
+    const to = ids.indexOf(target)
+    if (from < 0 || to < 0) return
+    ids.splice(from, 1)
+    ids.splice(to, 0, source)
+    updateCapabilityNav({ ...capabilityNav, order: ids })
+  }
+  useEffect(() => {
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key === capabilityNavKey()) setCapabilityNav(readCapabilityNav())
+      if (event.key === loadedCapabilityKey()) setLoadedCapabilities(readLoadedCapabilities())
+    }
+    const onLoadedChange = (): void => { setLoadedCapabilities(readLoadedCapabilities()) }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('dsh:workbench-capabilities-change', onLoadedChange)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('dsh:workbench-capabilities-change', onLoadedChange)
+    }
+  }, [])
   // Wide content stays mounted while the collapse animates (fading via
   // .collapsed .wide), unmounts at settle, and remounts right away on expand.
   const [settled, setSettled] = useState(collapsed)
@@ -105,7 +177,12 @@ export function SidebarRoot({
     const timer = window.setTimeout(() => { setSettled(true) }, COLLAPSE_SETTLE_MS)
     return () => { window.clearTimeout(timer) }
   }, [collapsed])
-  const wide = !collapsed || !settled
+  const windowsTitlebar = document.documentElement.hasAttribute('data-windows-titlebar')
+  const wide = windowsTitlebar ? !collapsed : !collapsed || !settled
+  // The Windows caption menus occupy the strip to the right of these controls
+  // (that is what --dsh-windows-menu-start reserves), so a right-side bubble
+  // lands under their text. Below the caption is the only clear side.
+  const captionTooltipSide = windowsTitlebar ? 'bottom' : 'right'
 
   // Freeze the content at its expanded width while it fades out (collapsed
   // && wide): the sliding column then clips it instead of reflowing it. The
@@ -163,6 +240,30 @@ export function SidebarRoot({
 
   const buildVersion = localBuildVersion()
 
+  const darwinDesktop = isDarwinDesktop()
+  // Rail resting state is the whale mark; hovering swaps in the panel icon
+  // (the expand affordance, figma sidebar-hover flow). Expanded it is a plain
+  // panel icon.
+  const toggle = (
+    <Tooltip label={collapsed ? t('toggle.open') : t('toggle.collapse')} delayMs={500} side={captionTooltipSide}>
+      <button
+        type="button"
+        className={clsx(css.iconButton, css.toggle)}
+        aria-label={collapsed ? t('toggle.open') : t('toggle.collapse')}
+        onClick={() => { toggleSidebar() }}
+      >
+        {!wide && !windowsTitlebar && (
+          <span className={css.railMark} aria-hidden="true">
+            {renderSlot('sidebar.brand.mark', { size: 24 }, { fallback: <FishLogo size={24} /> })}
+          </span>
+        )}
+        {/* Rail icons render at 18 (figma rail spec); expanded keeps the glyph-native sizes. */}
+        <IconPanelLeftOutlineRegular className={css.panelIcon} size={wide || windowsTitlebar ? 16 : 18} />
+        {!wide && renderSlot('sidebar.toggle.badge', {})}
+      </button>
+    </Tooltip>
+  )
+
   return (
     <div
       ref={column}
@@ -177,16 +278,16 @@ export function SidebarRoot({
       }}
       onPointerLeave={() => { armLinger() }}
     >
+      {/* macOS hiddenInset titlebar: the strip shares the row with the
+          traffic lights and keeps the toggle at the sidebar's top-right. */}
+      {darwinDesktop && <div className={css.topStrip}>{toggle}</div>}
       <div className={css.logoRow}>
-        {/* Expanded, the brand doubles as a New Session shortcut; the
-            collapsed rail's logo is the expand toggle below instead. */}
-        {wide && (
-          <button
-            type="button"
-            className={clsx(css.brand, css.wide)}
-            aria-label={t('session.new.label')}
-            onClick={() => { startSession() }}
-          >
+        {/* Expanded, the brand doubles as a New Session shortcut — except on
+            macOS, where it stays part of the logo row's window-drag surface
+            (a button would subtract itself through the global no-drag rule);
+            the collapsed rail's logo is the expand toggle below instead. */}
+        {wide && (() => {
+          const identity = (
             <span className={css.brandIdentity} aria-hidden="true">
               <span className={css.brandMark}>
                 {renderSlot('sidebar.brand.mark', { size: 24 }, { fallback: <FishLogo size={24} /> })}
@@ -204,53 +305,105 @@ export function SidebarRoot({
                 })}
               </span>
             </span>
-          </button>
-        )}
-        {/* Rail resting state is the whale mark; hovering swaps in the panel
-            icon (the expand affordance, figma sidebar-hover flow). */}
-        <Tooltip label={collapsed ? t('toggle.open') : t('toggle.collapse')} delayMs={500}>
-          <button
-            type="button"
-            className={clsx(css.iconButton, css.toggle)}
-            aria-label={collapsed ? t('toggle.open') : t('toggle.collapse')}
-            onClick={() => { toggleSidebar() }}
-          >
-            {!wide && (
-              <span className={css.railMark} aria-hidden="true">
-                {renderSlot('sidebar.brand.mark', { size: 24 }, { fallback: <FishLogo size={24} /> })}
-              </span>
-            )}
-            {/* Rail icons render at 18 (figma rail spec); expanded keeps the glyph-native sizes. */}
-            <IconPanelLeftOutline16 className={css.panelIcon} size={wide ? 16 : 18} />
-          </button>
-        </Tooltip>
+          )
+          return darwinDesktop
+            ? <span className={clsx(css.brand, css.wide)}>{identity}</span>
+            : (
+              <button
+                type="button"
+                className={clsx(css.brand, css.wide)}
+                aria-label={t('session.new.label')}
+                onClick={() => { startSession() }}
+              >
+                {identity}
+              </button>
+            )
+        })()}
+        {!darwinDesktop && toggle}
       </div>
 
       {/* Expanded, the button carries its own label — tooltip only on the rail. */}
-      <Tooltip label={t('session.new.label')} delayMs={500} disabled={wide}>
+      <Tooltip label={t('session.new.label')} delayMs={500} disabled={wide} side={captionTooltipSide}>
         <button
           type="button"
           className={css.newSession}
           aria-label={t('session.new.label')}
           onClick={() => { startSession() }}
         >
-          <IconNewChatOutline16 size={wide ? 14 : 18} />
+          {/* The rail draws Regular: Medium's 1.3px stroke scaled to the rail's
+              larger glyph reads visibly heavier than the neighboring 1px icons. */}
+          {wide
+            ? <IconNewChatOutlineMedium size={14} />
+            : <IconNewChatOutlineRegular size={windowsTitlebar ? 16 : 18} />}
           {wide && <span className={clsx(css.newSessionLabel, css.wide)}>{t('session.new')}</span>}
         </button>
       </Tooltip>
 
       {panels.length > 0 && (
         <nav className={css.panelList} aria-label={t('panels.label')}>
-          {panels.map(({ id, label }) => (
-            <PanelRow
-              key={id}
-              id={id}
-              label={label}
-              wide={wide}
-              usePanelInfo={usePanelInfo}
-              selectPanel={selectPanel}
-              renderSlot={renderSlot}
-            />
+          {normalPanels.map(({ id, label }) => (
+            <div key={id} className={css.panelGroup}>
+              <div className={css.panelGroupHead}>
+                <PanelRow
+                  id={id}
+                  label={label}
+                  wide={wide}
+                  usePanelInfo={usePanelInfo}
+                  selectPanel={selectPanel}
+                  renderSlot={renderSlot}
+                />
+                {id === 'workbench' && wide && sortedCapabilities.length > 0 && (
+                  <button
+                    type="button"
+                    className={css.capabilityToggle}
+                    aria-label={capabilityNav.expanded ? '收起能力包' : '展开能力包'}
+                    aria-expanded={capabilityNav.expanded}
+                    onClick={() => { updateCapabilityNav({ ...capabilityNav, expanded: !capabilityNav.expanded }) }}
+                  >{capabilityNav.expanded ? '⌄' : '›'}</button>
+                )}
+              </div>
+              {id === 'workbench' && (capabilityNav.expanded || !wide) && sortedCapabilities.length > 0 && (
+                <div className={css.capabilityList} aria-label="已加载能力包">
+                  {sortedCapabilities.map(capability => (
+                    <div
+                      key={capability.id}
+                      className={clsx(css.capabilityItem, dropCapability === capability.id && css.capabilityDrop)}
+                      draggable={wide}
+                      onDragStart={(event: DragEvent<HTMLDivElement>) => {
+                        setDraggedCapability(capability.id)
+                        event.dataTransfer.effectAllowed = 'move'
+                        event.dataTransfer.setData('text/plain', capability.id)
+                      }}
+                      onDragOver={(event: DragEvent<HTMLDivElement>) => {
+                        if (!draggedCapability || draggedCapability === capability.id) return
+                        event.preventDefault()
+                        event.dataTransfer.dropEffect = 'move'
+                        setDropCapability(capability.id)
+                      }}
+                      onDrop={(event: DragEvent<HTMLDivElement>) => {
+                        event.preventDefault()
+                        const source = draggedCapability ?? event.dataTransfer.getData('text/plain')
+                        reorderCapability(source, capability.id)
+                        setDraggedCapability(null)
+                        setDropCapability(null)
+                      }}
+                      onDragEnd={() => { setDraggedCapability(null); setDropCapability(null) }}
+                    >
+                      <PanelRow
+                        id={capability.id}
+                        label={capability.label}
+                        wide={wide}
+                        capability
+                        usePanelInfo={usePanelInfo}
+                        selectPanel={selectPanel}
+                        renderSlot={renderSlot}
+                      />
+                      {wide && <span className={css.capabilityGrip} aria-hidden="true">⋮⋮</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
       )}

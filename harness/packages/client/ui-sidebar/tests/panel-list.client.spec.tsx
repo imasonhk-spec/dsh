@@ -7,7 +7,7 @@ import { SlotTestRuntime } from '@deepseek-ai/dsh-client-test-runtime'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { IconGlobeOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconGlobeOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ILayout, MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { PropsRenderSlots, PropsRuntime, SlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import { apply, inject } from '../src/client/index.ts'
@@ -88,7 +88,7 @@ async function mountPanel(runtime: SlotTestRuntime, { heading, ...metadata }: Te
   function Icon({ size, active }: PropsRuntime<'sidebar.panellist'>) {
     return (
       <span data-testid={`${metadata.id}-icon`} data-active={active}>
-        <IconGlobeOutline14 size={size} />
+        <IconGlobeOutlineRegular size={size} />
       </span>
     )
   }
@@ -272,5 +272,37 @@ describe('sidebar global panels', () => {
     expect(view.getByRole('heading', { name: 'Alpha content' })).toBeTruthy()
     act(() => { locale.setLocale('zh') })
     expect(view.queryByRole('navigation')).toBeNull()
+  })
+
+  it('nests loaded capabilities beneath Plugins, toggles them, and persists drag order', async () => {
+    const { runtime, view } = await bench()
+    const storageKey = 'dsh.sidebar.capabilities.v1'
+    window.localStorage.removeItem(storageKey)
+    await mountPanel(runtime, { id: 'plugins' as MainPanelId, heading: 'Plugin content', label: 'Plugins' })
+    await mountPanel(runtime, { id: 'cap:meeting' as MainPanelId, heading: 'Meeting content', label: 'Meeting', order: 10 })
+    await mountPanel(runtime, { id: 'cap:notes' as MainPanelId, heading: 'Notes content', label: 'Notes', order: 20 })
+    const nav = await view.findByRole('navigation', { name: 'Global panels' })
+    expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Plugins', '收起能力包', 'Meeting', 'Notes'])
+    fireEvent.click(within(nav).getByRole('button', { name: '收起能力包' }))
+    expect(within(nav).queryByRole('button', { name: 'Meeting' })).toBeNull()
+    fireEvent.click(within(nav).getByRole('button', { name: '展开能力包' }))
+    const source = within(nav).getByRole('button', { name: 'Notes' }).parentElement!
+    const target = within(nav).getByRole('button', { name: 'Meeting' }).parentElement!
+    const dataTransfer = { effectAllowed: '', dropEffect: '', setData: vi.fn(), getData: () => 'cap:notes' }
+    fireEvent.dragStart(source, { dataTransfer })
+    fireEvent.dragOver(target, { dataTransfer })
+    fireEvent.drop(target, { dataTransfer })
+    expect(within(nav).getAllByRole('button').map(button => button.getAttribute('aria-label'))).toEqual(['Plugins', '收起能力包', 'Notes', 'Meeting'])
+    expect(JSON.parse(window.localStorage.getItem(storageKey)!).order).toEqual(['cap:notes', 'cap:meeting'])
+    const loadedKey = 'dsh.workbench.loaded.v1'
+    window.localStorage.setItem(loadedKey, JSON.stringify({ meeting: false }))
+    act(() => { window.dispatchEvent(new Event('dsh:workbench-capabilities-change')) })
+    expect(within(nav).queryByRole('button', { name: 'Meeting' })).toBeNull()
+    expect(within(nav).getByRole('button', { name: 'Notes' })).toBeTruthy()
+    window.localStorage.setItem(loadedKey, JSON.stringify({ meeting: true }))
+    act(() => { window.dispatchEvent(new Event('dsh:workbench-capabilities-change')) })
+    expect(within(nav).getByRole('button', { name: 'Meeting' })).toBeTruthy()
+    window.localStorage.removeItem(loadedKey)
+    window.localStorage.removeItem(storageKey)
   })
 })

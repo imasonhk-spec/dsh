@@ -16,3 +16,39 @@ export function isLoopbackHostname(hostname: string): boolean {
     && parts[0] === '127'
     && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)
 }
+
+/**
+ * Whether a page authority (`location.hostname` plus `location.port`, `''` on
+ * default ports) matches one declared `trustedHosts` entry, under the same
+ * normalization the `/api` fence applies to Host headers: an entry with an
+ * explicit port matches that exact port, a port-less entry matches the
+ * hostname on any port, and an explicit default-port entry matches only a
+ * page addressed with that port. Judging the page by the same shapes the
+ * fence accepts keeps the page privilege grant and the request grant from
+ * diverging — a privileged page is one whose own RPC the fence admits.
+ * @param hostname - page hostname (WHATWG `location.hostname`).
+ * @param port - page port (WHATWG `location.port`; `''` when default).
+ * @param trustedHosts - non-loopback authorities this deployment serves.
+ * @returns true when the page authority is one of the declared entries.
+ */
+export function isTrustedPageAuthority(
+  hostname: string,
+  port: string,
+  trustedHosts: readonly string[],
+): boolean {
+  const host = hostname.toLowerCase()
+  return trustedHosts.some((entry) => {
+    let entryUrl: URL
+    try {
+      entryUrl = new URL(`http://${entry}`)
+    } catch {
+      return false
+    }
+    // Explicit-port judgment under both special schemes: their default ports
+    // differ, so `:80` and `:443` still count as explicit (fence parity). An
+    // authority that parsed under http cannot fail under https.
+    const entryPort = entryUrl.port !== '' ? entryUrl.port : new URL(`https://${entry}`).port
+    if (entryUrl.hostname !== host) return false
+    return entryPort === '' || (port !== '' && entryPort === port)
+  })
+}
