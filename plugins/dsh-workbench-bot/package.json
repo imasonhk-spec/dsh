@@ -1,0 +1,35 @@
+{
+  "name": "@local/dsh-workbench-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./src/client/index.js"
+  },
+  "files": [
+    "index.js",
+    "src/",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ]
+    }
+  },
+  "peerDependencies": {},
+  "meta": {
+    "title": "DSH Bot 工作台",
+    "description": "微信式多 Agent 协作悬浮窗：五个私聊 + 长期群聊 + 会议纪要到 PPT 真实协作交付。"
+  }
+}

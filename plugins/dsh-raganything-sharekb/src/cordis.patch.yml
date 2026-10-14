@@ -1,0 +1,21 @@
+# dsh-raganything-kb bundle patch: inserts the host row into the profile's
+# plugin roster. The row starts the RAG-Anything sidecar manager, generates a
+# first-run sidecar config when absent, and registers the rag_* model tools on
+# the global tools registry. NO knowledge base data is bundled: every install
+# starts with a fresh, empty knowledge base.
+# Installed via `dsh plugin --profile <name> add`; the bundle patch is applied
+# automatically (dsh.profile.bundles reconciliation) — do NOT insert this row
+# again in the profile patch (duplicate ids crash the loader).
+#
+# Deployment modes (override via the profile's user cordis.patch.yml, e.g.
+# `- id: raganything-kb` + `config:`):
+#   local  (default) — sidecarHost 127.0.0.1: the plugin spawns/adopts a local
+#           sidecar process; first-run config.json is generated when absent.
+#           Each host has its own fresh, independent knowledge base.
+#   remote — sidecarHost: <server-ip>, autoStart: false, apiToken: <token>:
+#           shared knowledge base over HTTP (rag_ingest uploads files first).
+- insert:
+    - id: raganything-kb
+      name: dsh-raganything-kb
+      config:
+        sidecarPort: 17321

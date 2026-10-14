@@ -1,0 +1,43 @@
+# ============================================================
+# 行尾 / 二进制保护
+# ============================================================
+# 本仓库含大量取自生产机的插件产物：源码多为 CRLF，而 dist/ 下是
+# .tgz / .tar.gz / .png 等二进制。Windows 上 core.autocrlf=true 时，
+# git 会把「未被声明为二进制、且前 8000 字节无 NUL」的文件误判为文本
+# 并做 CRLF 转换，从而静默损坏发行包。
+#
+# 以下扩展名一律声明为 binary（= -text -diff），禁止任何行尾转换。
+# 2026-10-14 实测：dsh-multi-user-1.1.1.tgz 曾因缺少本声明而被转换。
+
+*.tgz        binary
+*.tar.gz     binary
+*.tar        binary
+*.gz         binary
+*.zip        binary
+*.7z         binary
+*.png        binary
+*.jpg        binary
+*.jpeg       binary
+*.gif        binary
+*.webp       binary
+*.bmp        binary
+*.ico        binary
+*.pdf        binary
+*.mp4        binary
+*.mov        binary
+*.mp3        binary
+*.wav        binary
+*.woff       binary
+*.woff2      binary
+*.ttf        binary
+*.otf        binary
+*.eot        binary
+*.xlsx       binary
+*.xls        binary
+*.docx       binary
+*.doc        binary
+*.pptx       binary
+*.ppt        binary
+*.so         binary
+*.node       binary
+*.wasm       binary

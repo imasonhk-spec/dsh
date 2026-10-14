@@ -1,6 +1,6 @@
 # DSH 全栈部署仓库（DSH + 知识库 + 多用户）
 
-把一套生产可用的 **DeepSeek Harness (DSH) + dsh-raganything-kb 知识库 + dsh-multi-user 多用户网关** 整栈源码与部署工具打包在此，供其他盒子 `git clone` 后**一键拉起**。
+把一套生产可用的 **DeepSeek Harness (DSH) + 共享知识库 + 多用户网关 + 8.6 全套自研插件**（共 9 个，见 [plugins/README.md](plugins/README.md)）整栈源码与部署工具打包在此，供其他盒子 `git clone` 后**一键拉起**。
 
 > 本仓库是 192.168.8.6:3082 生产部署的「可移植快照」。harness 是我们基于 `@deepseek-ai/dsh-root` v0.1.5-rc.1 的 **fork**，含 3 个未提交的生产补丁（见下方说明），已随源码一并纳入。
 
@@ -21,9 +21,17 @@
 dsh/
 ├── harness/                 # DSH 宿主程序 fork 源码（@deepseek-ai/dsh-root v0.1.5-rc.1）
 │                             #   含 3 个生产补丁：loopback-hostname.ts / serialize.ts / context.ts
-├── plugins/
-│   ├── dsh-raganything-kb/  # 知识库插件源码（RAG sidecar + 面板）
-│   └── dsh-multi-user/      # 多用户网关插件源码
+├── plugins/                 # 8.6 生产机的完整插件集（详见 plugins/README.md）
+│   ├── dsh-raganything-sharekb/  # 共享知识库（RAG sidecar + 面板）★ 8.6 在用线
+│   ├── dsh-multi-user/           # 多用户网关（登录门禁 + 每用户独立空间）
+│   ├── dsh-workbench/            # 工作台（导航 / 全屏面板托管）
+│   ├── dsh-meetai/               # 会议助手
+│   ├── dsh-policy-analysis/      # 政策解读
+│   ├── dsh-huiwen-ppt/           # 汇文 PPT（模板驱动 PPT 生产）
+│   ├── dsh-bot-shell/            # Bot 对话外壳
+│   ├── dsh-memory-evolve/        # 分层记忆 + 自我进化
+│   ├── dsh-workbench-bot/        # 工作台 Bot 入口
+│   └── dsh-raganything-kb/       # 早期单机线快照（非 8.6 载荷，保留）
 ├── deploy/
 │   ├── deploy.sh            # 一键部署编排（终端用户 / 开发 双模式）
 │   ├── config-templates/    # 所有 systemd / nginx / sidecar / settings 模板（{{VAR}} 占位）
