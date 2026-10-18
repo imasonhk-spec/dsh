@@ -31,6 +31,7 @@ import { withProjectLock } from './workflow.js';
 
 const MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
+  '.webp': 'image/webp', '.gif': 'image/gif', '.bmp': 'image/bmp',
   '.pdf': 'application/pdf', '.json': 'application/json; charset=utf-8',
   '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 };
@@ -243,8 +244,8 @@ route('GET', '/projects', async (ctx) => {
 });
 
 route('POST', '/projects/import', async (ctx) => {
-  const filename = decodeURIComponent(ctx.query.get('filename') || 'upload.pptx');
-  const title = decodeURIComponent(ctx.query.get('title') || '') || null;
+  const filename = ctx.query.get('filename') || 'upload.pptx';
+  const title = ctx.query.get('title') || null;
   const max = config().limits.uploadMaxBytes;
   const buf = await readBody(ctx.req, max);
   if (!buf.length) return sendJson(ctx.res, 400, apiError('INVALID_OPERATION', '请求体为空：请以二进制流上传 PPTX'));
@@ -369,7 +370,7 @@ route('GET', '/projects/:id/brief', async (ctx) => {
 });
 
 route('POST', '/projects/:id/materials', async (ctx) => {
-  const filename = decodeURIComponent(ctx.query.get('filename') || 'material.bin');
+  const filename = ctx.query.get('filename') || 'material.bin';
   const max = config().limits.uploadMaxBytes;
   const buf = await readBody(ctx.req, max);
   if (!buf.length) return sendJson(ctx.res, 400, apiError('INVALID_OPERATION', '材料内容为空'));
@@ -390,7 +391,7 @@ route('DELETE', '/projects/:id/materials/:mid', async (ctx) => {
 /* ── WF-04：风格选择 / 自定义模板；WF-05：执行计划 ────────────── */
 
 route('POST', '/projects/:id/style/template', async (ctx) => {
-  const filename = decodeURIComponent(ctx.query.get('filename') || 'template.pptx');
+  const filename = ctx.query.get('filename') || 'template.pptx';
   const buf = await readBody(ctx.req, config().limits.uploadMaxBytes);
   if (!buf.length) return sendJson(ctx.res, 400, apiError('INVALID_OPERATION', '模板内容为空'));
   const custom = await planner.importCustomTemplate(ctx.params.id, buf, filename);

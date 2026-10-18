@@ -13,7 +13,7 @@ import { loadBrief } from './brief.js';
 import { createJob, getJob, startJob, setStep, listJobs } from './jobs.js';
 import { withProjectLock, checkCancelled, beginCommit, markCommitted, operationJob } from './workflow.js';
 import { planFingerprint } from './dependencies.js';
-import { generateSlideContent, detailedOperations } from './slide-content.js';
+import { generateSlideContent, detailedOperations, textBoxSize } from './slide-content.js';
 export const GEN_STEPS = ['生成逐页正文与构建操作','构建 PPTX','结构巡检','渲染预览与报告'];
 export async function resolveTemplateDir(family) {
   const root=path.join(config().dataDir,'library','templates');
@@ -40,7 +40,7 @@ export function fillOperations(page, slide, outIndex, content) {
   const assigned=new Map(body.map((e)=>[e,[]]));
   // Allocate whole points before rendering; a wide, shallow caption is not a full-page body.
   const capacity=(e,text)=>{
-    const width=Math.max(1,((e.position?.width||0)-20)*0.75),height=((e.position?.height||0)-10)*0.75;
+    const {width,height}=textBoxSize(e);
     for(let size=18;size>=8;size-=0.25) {
       const rows=text.split('\n').reduce((n,line)=>n+Math.max(1,Math.ceil([...line].reduce((w,c)=>w+(/[^\u0000-\u007f]/.test(c)?1:0.65),0)*size/width)),0);
       if(rows*size*1.4<=height) return size;
@@ -66,12 +66,22 @@ export async function prepareBuildPlan(projectId,phase='sample') {
   const approvals={requirements:brief?.approvals?.requirements,outline:outline?.approvals?.outline};
   if(!approvals.requirements || !approvals.outline) throw apiError('REQUIRED_FIELD_MISSING','需要自动补齐需求及大纲记录');
   if(phase==='final') approvals.samples=await validateSampleApproval(projectId);
-  const index=await buildIndex(), slides=[];
+  const index=await buildIndex(), slides=[], inspections=new Map();
   for(const p of plan.pages) {
     const lay=index.layouts.find((l)=>l.id===p.layout_id);
     if(!lay || lay.approval!=='approved' || lay.pack==='reference_pack' || !lay.template_slide) throw apiError('UNSUPPORTED_OBJECT','版式不可生成：'+p.layout_id);
     const dir=await resolveTemplateDir(lay.template_id || lay.family);
-    const insp=await readJson(path.join(dir,'inspection.json'),null);
+    let insp=inspections.get(dir);
+    if(!insp) {
+      insp=await readJson(path.join(dir,'inspection.json'),null);
+      if(insp?.text_capacity_schema!==1) {
+        // Legacy inspections omit native insets; leave approved template files untouched.
+        const output=path.join(projectDir(projectId),'template-inspection-'+path.basename(dir)+'.json');
+        await studioRun(['inspect','--source',path.join(dir,'reference.pptx'),'--output',output]);
+        insp=await readJson(output,null);
+      }
+      inspections.set(dir,insp);
+    }
     const slide=insp?.slides?.[lay.template_slide-1];
     if(!slide) throw apiError('INVALID_OPERATION','模板页号越界：'+lay.template_slide);
     if(lay.source_template_sha && lay.source_template_sha!==await sha256File(path.join(dir,'reference.pptx'))) throw apiError('SOURCE_HASH_MISMATCH','计划模板已变化');

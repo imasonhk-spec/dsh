@@ -248,6 +248,7 @@ export async function projectSnapshot(id) {
     const { dir, meta, state } = await loadProject(id);
     const snapshot = { id, meta, studio_state: state, jobs: listJobs(id) };
     for (const [key, file] of Object.entries({ brief: 'brief.json', outline: 'outline.json', materials: 'materials.json', custom_style: 'custom-style.json', selection: 'style-selection.json', plan: 'plan.json', annotations: 'annotations.json', preferences: 'layout-preferences.json' })) snapshot[key] = await readJson(path.join(dir, file), null);
+    if (snapshot.materials) snapshot.materials = await (await import('./materials.js')).listMaterials(id);
     snapshot.report = meta.latest_report ? await readJson(path.join(dir, meta.latest_report), null) : null;
     snapshot.renders = snapshot.report?.render_pngs || [];
     return snapshot;

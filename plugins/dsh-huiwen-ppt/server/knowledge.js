@@ -14,7 +14,7 @@ import { readJson, writeJson, nowIso, apiError } from './util.js';
 import { studio as studioRun, approveTemplate } from './studio.js';
 import { invalidateIndex } from './index-builder.js';
 import { randomUUID } from 'node:crypto';
-import { listMaterials } from './materials.js';
+import { listMaterials, listContentMaterials } from './materials.js';
 import { stableHash } from './util.js';
 import { withProjectLock } from './workflow.js';
 
@@ -209,7 +209,7 @@ export async function analyzeMaterialFacts(projectId,modelId) {
   const { sourceEvidence }=await import('./material-analysis.js');
   const model=await resolveModel(modelId || (await loadProject(projectId)).meta.dialogue_model);
   if(!model.online) throw apiError('LLM_UNAVAILABLE','材料事实提取需要可用模型');
-  const mats=await listMaterials(projectId),evidence=[];
+  const mats=await listContentMaterials(projectId),evidence=[];
   for(const [index,source] of mats.entries()) {
     if(!source.text_extracted || source.extraction_status==='partial') throw apiError('MATERIAL_ANALYSIS_FAILED','材料「'+source.name+'」尚未完整提取');
     const raw=await fsp.readFile(path.join(projectDir(projectId),source.file+'.extract.txt'),'utf8');

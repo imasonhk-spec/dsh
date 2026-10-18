@@ -1,7 +1,7 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { projectDir } from './projects.js';
-import { listMaterials } from './materials.js';
+import { listContentMaterials } from './materials.js';
 import { readJson, writeJson, stableHash } from './util.js';
 import { chatJson } from './llm.js';
 import { listMaterialFacts } from './knowledge.js';
@@ -15,7 +15,7 @@ export function sourceEvidence(text, offset=0) {
 
 export async function materialDigest(projectId, model) {
   const result = [];
-  const materials=await listMaterials(projectId);
+  const materials=await listContentMaterials(projectId);
   for (const m of materials) {
     if (!m.text_extracted || m.extraction_status === 'partial') throw Object.assign(new Error('材料「'+m.name+'」尚未完整提取：'+(m.extraction_error || m.extraction_status || '未知状态')), { code: 'MATERIAL_ANALYSIS_FAILED' });
     const file = path.join(projectDir(projectId), m.file);

@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const PANEL_ID = 'cap:huiwen-ppt';
     const OPEN_EVENT = 'cappacks:open-huiwen-ppt';
     const SIDEBAR_EVENT = 'hp:huiwen-ppt-sidebar';
-    const VERSION = 'v0.4.4';
+    const VERSION = 'v0.4.9';
     const API = '/api/huiwen-ppt';
     const img = (name) => API + '/assets/previews/' + name;
 
@@ -1064,7 +1064,7 @@ window.__ModuleLoader__.load({
           if (!snapshotResponse.ok || !snap.ok) throw new Error(snap.message || '项目快照读取失败');
           const count = snap.selection?.count || snap.brief?.page_count || snap.outline?.pages?.length || null;
           const family = snap.selection?.family || 'green-clean-business';
-          setCtx({ ...DEFAULT_CTX, topic: snap.meta.title || j.title || title || '', materials: (snap.materials || []).map((m) => ({ ...m, ext: m.type, icon: MAT_ICONS[m.type] || '📎', pages: m.text_chars ? m.text_chars + ' 字' : m.size + ' 字节', summary: m.extraction_error || '正文已完整提取' })), outline: (snap.outline?.pages || []).map((p) => ({ n: p.n, title: p.title, rel: p.relation })), family, count, customStyle: snap.custom_style, pageLayouts: (snap.plan?.pages || []).map((p) => ({ n: p.n, title: p.title, rel: p.relation, alt: p.alt, layoutId: p.layout_id })), version: snap.meta.version, sha: snap.meta.source_sha256, shaFull: snap.meta.source_sha256, renders: snap.renders || [] });
+          setCtx({ ...DEFAULT_CTX, topic: snap.meta.title || j.title || title || '', materials: (snap.materials || []).map((m) => ({ ...m, ext: m.type, icon: MAT_ICONS[m.type] || '📎', pages: m.text_chars ? m.text_chars + ' 字' : m.size + ' 字节', summary: m.role === 'visual-reference' ? '图片版式参考，不作为正文依据' : m.extraction_error || '正文已完整提取' })), outline: (snap.outline?.pages || []).map((p) => ({ n: p.n, title: p.title, rel: p.relation })), family, count, customStyle: snap.custom_style, pageLayouts: (snap.plan?.pages || []).map((p) => ({ n: p.n, title: p.title, rel: p.relation, alt: p.alt, layoutId: p.layout_id })), version: snap.meta.version, sha: snap.meta.source_sha256, shaFull: snap.meta.source_sha256, renders: snap.renders || [] });
           setSel({ family, count }); setModelId(snap.meta.dialogue_model || '');
           setStage(snap.meta.status === 'archived' ? 'archived' : stageFromBackend(snap.meta.stage));
           if(snap.meta.stage==='style' && !snap.selection && !list.some(m=>m.kind==='style')) setMsgs((prev)=>[...prev,{id:nid(),role:'ai',kind:'style',payload:{}}]);
@@ -1612,13 +1612,14 @@ window.__ModuleLoader__.load({
             if (!res.ok || !j.ok) throw new Error((j && j.message) || ('HTTP ' + res.status));
             const ext = (f.name.split('.').pop() || '').toLowerCase();
             const mat = {
+              ...j.entry,
               id: j.entry.id, name: j.entry.name, ext,
               icon: MAT_ICONS[ext] || '📎',
               pages: j.entry.size > 1048576 ? (j.entry.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(j.entry.size / 1024)) + ' KB',
-              summary: j.entry.text_extracted ? '已提取文本 ' + j.entry.text_chars + ' 字，可作大纲与字段引用' : '正文提取未完成：' + (j.entry.extraction_error || '格式暂不支持'),
+              summary: j.entry.role === 'visual-reference' ? '图片版式参考，不作为正文依据' : j.entry.text_extracted ? '已提取文本 ' + j.entry.text_chars + ' 字，可作大纲与字段引用' : '正文提取未完成：' + (j.entry.extraction_error || '格式暂不支持'),
             };
             setCtx((c) => ({ ...c, materials: [...c.materials.filter((m) => m.id !== mat.id), mat] }));
-            setMsgs((prev) => [...prev, { id: nid(), role: 'ai', kind: 'text', text: '已收到「' + f.name + '」✅ 材料清单见右侧。' + (j.deduplicated ? '（与已有材料相同，已去重）' : '') + (stage === 'material' ? '继续上传，或说「继续」开始拟大纲。' : '') }]);
+            setMsgs((prev) => [...prev, { id: nid(), role: 'ai', kind: 'text', text: '已收到「' + f.name + '」✅ 材料清单见右侧。' + (j.entry.role === 'visual-reference' ? '已保留为图片版式参考，不提取正文，也不作为事实依据。' : '') + (j.deduplicated ? '（与已有材料相同，已去重）' : '') + (stage === 'material' ? '继续上传，或说「继续」开始拟大纲。' : '') }]);
           } catch (err) { if (err?.code === 'STALE_PROJECT') return;
             setMsgs((prev) => [...prev, { id: nid(), role: 'ai', kind: 'text', text: '上传失败：' + (err && err.message ? err.message : err) }]);
           }
@@ -1638,8 +1639,8 @@ window.__ModuleLoader__.load({
         ]);
       };
       const onPickFile = async (e) => {
-        const fs = e.target.files; e.target.value = '';
-        if (fs && fs.length) { for (const f of Array.prototype.slice.call(fs)) await uploadMaterial(f); }
+        const files = Array.from(e.target.files || []); e.target.value = '';
+        for (const f of files) await uploadMaterial(f);
       };
       const removeMat = async (id) => {
         try { const r = await projectFetch(API + '/api/projects/' + encodeURIComponent(projectId) + '/materials/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' }); const j = await r.json(); if (!r.ok || !j.ok) throw new Error(j.message || '移除失败'); setCtx((c) => ({ ...c, materials: c.materials.filter((m) => m.id !== id) })); }
@@ -2154,6 +2155,7 @@ window.__ModuleLoader__.load({
           })),
         /* ── 右：演化工作区 ── */
         h('div', { className: 'hp-stage-pane' + (isCanvasStage ? ' tight' : '') },
+          ctx.materials.some((m) => m.role === 'visual-reference') ? h('details', { className: 'hp-card', style: { marginBottom: 12 } }, h('summary', null, '图片版式参考（不作为正文依据）'), ctx.materials.filter((m) => m.role === 'visual-reference').map((m) => h('div', { key: m.id }, h('a', { href: API + '/api/data-file/projects/' + encodeURIComponent(projectId) + '/' + m.file, target: '_blank', rel: 'noopener noreferrer' }, m.name)))) : null,
           isCanvasStage ? paneCanvas : pane,
           projectId ? h(React.Fragment, null, h(ExportHistory, { key: 'exports:'+projectId, projectId, onToast }), h(MaterialKnowledge, { key: projectId, projectId, materials: ctx.materials, modelId, onToast })) : null));
     }
@@ -2174,7 +2176,7 @@ window.__ModuleLoader__.load({
       return h('details', { className: 'hp-card', style: { marginTop: 12, padding: 10 } }, h('summary', null, '材料事实候选与知识库'),
         h(Btn, { sm: true, disabled: busy, onClick: () => action(() => request('/analyze', { model_id: modelId })) }, '用真实模型提取候选'),
         h('textarea', { className: 'hp-textarea', value: text, onChange: (e) => setText(e.target.value), placeholder: '补充事实候选（确认后才入库）' }),
-        h('select', { className: 'hp-select', value: source, onChange: (e) => setSource(e.target.value) }, h('option', { value: '对话补充' }, '对话补充'), (materials || []).map((m) => h('option', { key: m.id, value: m.name }, m.name))),
+        h('select', { className: 'hp-select', value: source, onChange: (e) => setSource(e.target.value) }, h('option', { value: '对话补充' }, '对话补充'), (materials || []).filter((m) => m.role !== 'visual-reference').map((m) => h('option', { key: m.id, value: m.name }, m.name))),
         h('input', { className: 'hp-input', value: locator, onChange: (e) => setLocator(e.target.value), placeholder: '来源页 / 段落 / 表行 / 单元格' }),
         h(Btn, { sm: true, disabled: busy || !text.trim(), onClick: () => action(async () => { await request('', { text, source_name: source, locator }); setText(''); }) }, '登记候选'),
         facts.map((f) => h('div', { key: f.id }, f.text + ' · ' + f.source_name + ' · ' + f.locator + ' · ' + f.status, f.status !== 'confirmed' ? h(Btn, { sm: true, disabled: busy, onClick: () => action(() => request('/' + f.id + '/confirm', { confirmed_by: '用户' })) }, '确认入库') : null)),

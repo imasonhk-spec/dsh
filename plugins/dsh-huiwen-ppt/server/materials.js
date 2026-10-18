@@ -9,7 +9,15 @@ import { withProjectLock } from './workflow.js';
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'scripts', 'extract-text.py');
 const TEXT = new Set(['.txt', '.md', '.markdown']);
 const EXTRACT = new Set(['.docx','.docm','.pptx','.ppsx','.potx','.pptm','.xlsx','.xlsm','.pdf']);
-export async function listMaterials(id) { return readJson(path.join(projectDir(id), 'materials.json'), []); }
+const IMAGES = new Set(['png','jpg','jpeg','webp','gif','bmp','svg']);
+export function isVisualReference(entry) { return IMAGES.has(entry.type); }
+function materialRole(entry) {
+  if (!isVisualReference(entry)) return entry;
+  const { extraction_error, ...reference } = entry;
+  return { ...reference, role: 'visual-reference', text_extracted: false, extraction_status: 'not-required' };
+}
+export async function listMaterials(id) { return (await readJson(path.join(projectDir(id), 'materials.json'), [])).map(materialRole); }
+export async function listContentMaterials(id) { return (await listMaterials(id)).filter(m => m.role !== 'visual-reference'); }
 export async function addMaterial(id, buf, filename) {
   return withProjectLock(id, async () => {
     await loadProject(id);
@@ -20,8 +28,8 @@ export async function addMaterial(id, buf, filename) {
     const mid = 'mat-' + randomUUID(), file = 'sources/' + mid + ext, target = path.join(projectDir(id), file);
     await fsp.mkdir(path.dirname(target), { recursive: true });
     await fsp.writeFile(target, buf, { flag: 'wx' });
-    const entry = { id: mid, name, file, size: buf.length, sha256: sha, type: ext.slice(1), text_extracted: false, extraction_status: 'unsupported', added_at: nowIso() };
-    try {
+    const entry = materialRole({ id: mid, name, file, size: buf.length, sha256: sha, type: ext.slice(1), text_extracted: false, extraction_status: 'unsupported', added_at: nowIso() });
+    if (entry.role !== 'visual-reference') try {
       let extracted;
       if (TEXT.has(ext)) { const text = new TextDecoder('utf-8', { fatal: true }).decode(buf); extracted = { ok: true, text, chars: text.length, truncated: false, blocks: text.split(/\n\s*\n/).map((text,i) => ({ locator: '段落 ' + (i+1), text })) }; }
       else if (EXTRACT.has(ext)) {

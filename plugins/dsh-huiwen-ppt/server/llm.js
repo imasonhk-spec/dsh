@@ -10,7 +10,7 @@
 import { config } from './config.js';
 import { runCmd } from './util.js';
 import { findDshModel, probeProvider } from './dsh-models.js';
-import { operationSignal, checkCancelled } from './workflow.js';
+import { operationSignal, checkCancelled, modelBudget } from './workflow.js';
 
 const TAGS_TTL = 15000;
 let tagsCache = null;
@@ -148,6 +148,7 @@ async function openaiChat(opts) {
       throw e;
     }
     const data = JSON.parse(text);
+    await modelBudget()?.recordUsage({ tokens: data.usage?.total_tokens ?? (Number.isSafeInteger(data.usage?.prompt_tokens) && data.usage.prompt_tokens >= 0 && Number.isSafeInteger(data.usage?.completion_tokens) && data.usage.completion_tokens >= 0 ? data.usage.prompt_tokens + data.usage.completion_tokens : null) });
     let content = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
     if (Array.isArray(content)) content = content.map((c) => (c && c.text) || '').join('');
     if (data.choices?.[0]?.finish_reason === 'length') throw Object.assign(new Error('模型输出被长度限制截断'), { code:'LLM_OUTPUT_TRUNCATED', output:content });
@@ -174,6 +175,8 @@ async function openaiChat(opts) {
  * @returns {string} 助手回复文本
  */
 export async function chat(opts) {
+  const budget = modelBudget();
+  if (budget) opts = { ...opts, maxTokens: await budget.beforeRequest({ maxTokens: opts.maxTokens ?? 2048 }) };
   if (opts.model && opts.model.channel === 'openai') {
     return openaiChat(opts);
   }
@@ -188,6 +191,7 @@ export async function chat(opts) {
   };
   if (opts.json) body.format = 'json';
   const data = await ollamaCurl('POST', '/api/chat', body, opts.timeoutMs);
+  await budget?.recordUsage({ tokens: Number.isSafeInteger(data.prompt_eval_count) && data.prompt_eval_count >= 0 && Number.isSafeInteger(data.eval_count) && data.eval_count >= 0 ? data.prompt_eval_count + data.eval_count : null });
   const msg = data && data.message;
   let content = (msg && msg.content) || '';
   if (data.done_reason === 'length') throw Object.assign(new Error('模型输出被长度限制截断'), { code:'LLM_OUTPUT_TRUNCATED', output:content });

@@ -1,6 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 const scope = new AsyncLocalStorage();
 const tails = new Map();
+export function withModelBudget(budget, fn) { return scope.run({ ...(scope.getStore() || {}), modelBudget: budget }, fn); }
+export function modelBudget() { return scope.getStore()?.modelBudget; }
 export async function withProjectLock(id, fn) {
   const parent = scope.getStore() || {};
   if (parent.lock === id) return fn();

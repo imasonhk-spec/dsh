@@ -241,7 +241,7 @@ def full_page_pictures(parts, part, shapes, size):
 def inspect_file(path):
     parts, _ = load_package(path)
     slides, size = slide_parts(parts)
-    result = {"source": str(Path(path).resolve()), "sha256": digest(path), "slide_size": size,
+    result = {"source": str(Path(path).resolve()), "sha256": digest(path), "slide_size": size, "text_capacity_schema": 1,
               "slides": [], "themes": [], "fonts": {}, "font_sizes_pt": {}, "colors": {},
               "warnings": [], "style_scope": "Direct OOXML styles; inheritance requires visual inspection"}
     def count(key, value):
@@ -270,6 +270,12 @@ def inspect_file(path):
                     "grouped": grouped, "rotated_or_flipped": rotated, "hidden": hidden,
                     "occluded_by_full_page_picture": occluded,
                     "full_page_picture": any(pic["shape_id"] == shape_id(n) for pic in pictures)}
+            if n.localName == "sp":
+                body = first(n, "p", "txBody")
+                props = first(body, "a", "bodyPr") if body else None
+                item["text_insets"] = {key: int(props.getAttribute(attr) if props and props.hasAttribute(attr) else default) / EMU
+                                       for key, attr, default in (("left", "lIns", 91440), ("right", "rIns", 91440),
+                                                                  ("top", "tIns", 45720), ("bottom", "bIns", 45720))}
             if kind == "table":
                 item["cells"] = [[text_content(c) for c in children(row, "a", "tc")] for row in nodes(n, "a", "tr")]
             entry["elements"].append(item)
