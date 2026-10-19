@@ -1,81 +1,136 @@
-// 会议 / 政策 / 知识库适配器：复用业务插件已注册的 dsh 工具（ctx.tools）
-// 这些能力已作为 tool 注册到 ctx.tools，适配器通过 ctx 拿到工具并代理调用。
-// 若 ctx.tools 不可用（冷启动/未注入），health 返回 unavailable。
+// 四业务适配器统一入口与工厂。
+//
+// 会议 / 政策 / 知识库 / PPT 均已实现真实业务调用（不再依赖 ctx.tools 注入）：
+//   meeting -> JSON 文件直读（meeting.js，复用 meetai 落盘格式）
+//   policy  -> 进程内直驱（policy-inproc.js，复用 runPreflight/extractDocument/checkEvidence 纯函数）
+//   kb      -> sidecar HTTP 直连（kb-sidecar.js，复用 rag_* task 协议，127.0.0.1:17321）
+//   ppt     -> 进程内直驱（ppt.js + inproc.js，复用 huiwen-ppt handlePackRequest）
+//
+// 各适配器构造函数保留 ctx 参数兼容旧签名，但业务执行不依赖它。
 import { MANIFESTS, adapterError } from './base.js'
 import { PptAdapter } from './ppt.js'
+import { preflight, extract, evidenceCheck, resolveMod } from './policy-inproc.js'
+import { KbSidecar } from './kb-sidecar.js'
+import { MeetingAdapter } from './meeting.js'
+import { callTool, hasTool } from './tool-dispatch.js'
 
-// 会议适配器：meeting_create（已有）+ 通过 HTTP 读纪要（meeting_read_minutes 需新增）
-export class MeetingAdapter {
-  constructor({ ctx, baseUrl = '/api/meeting-assistant', fetchImpl }) {
-    this.ctx = ctx
-    this.baseUrl = baseUrl.replace(/\/$/, '')
-    this.fetch = fetchImpl || globalThis.fetch
-  }
-
-  manifest() { return MANIFESTS.meeting }
-
-  async health() {
-    // 纪要能力依赖 ctx.tools 有 meeting_create，或 HTTP 后端可达
-    const tools = this.ctx?.get?.('tools')
-    const hasTool = tools && typeof tools.register === 'function'
-    return { status: hasTool ? 'ready' : 'unavailable', version: '1.0.0', reason: hasTool ? undefined : 'tools service not injected' }
-  }
-
-  async _http(method, pathname, body) {
-    if (!this.fetch) throw adapterError('PLUGIN_UNAVAILABLE', 'no fetch')
-    const res = await this.fetch(this.baseUrl + pathname, {
-      method, headers: { 'content-type': 'application/json' },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    })
-    if (!res.ok) throw adapterError('PLUGIN_UNAVAILABLE', `HTTP ${res.status}`)
-    return res.json()
-  }
-
-  async invoke({ operation, input }) {
-    switch (operation) {
-      case 'meeting.list_recent':
-        return this._http('GET', '/meetings', undefined)
-      case 'meeting.read_minutes':
-        return this._http('GET', `/minutes/${input.artifactRef || input.minutesId}`, undefined)
-      default:
-        throw adapterError('PLUGIN_UNAVAILABLE', `operation ${operation} 需通过已注册 tool 执行（meeting_create）`)
-    }
-  }
-}
-
-// 政策适配器：policy_preflight / extract / evidence_check 三工具
+// 政策适配器：优先复用 policy-analysis 已注册的 policy_* 工具（ctx.tools），
+// 回退进程内直驱 runPreflight / extractDocument / checkEvidence。
+// 门禁链约束次序：preflight -> extract -> evidence_check，门禁失败不可绕过。
 export class PolicyAdapter {
-  constructor({ ctx }) { this.ctx = ctx }
+  constructor({ ctx } = {}) {
+    this.ctx = ctx
+  }
 
   manifest() { return MANIFESTS.policy }
 
   async health() {
-    const tools = this.ctx?.get?.('tools')
-    return { status: tools ? 'ready' : 'unavailable', version: '1.0.0' }
+    // 优先看工具是否已注册；否则尝试进程内直驱（能 import 组合根即 ready）。
+    if (hasTool(this.ctx, 'policy_preflight') && hasTool(this.ctx, 'policy_extract') && hasTool(this.ctx, 'policy_evidence_check')) {
+      return { status: 'ready', version: '1.0.0', detail: 'ctx.tools' }
+    }
+    if (this.ctx) return { status: 'unavailable', version: 'unknown', reason: '政策插件工具未启用' }
+    try {
+      await resolveMod()
+      return { status: 'ready', version: '1.0.0', detail: 'inproc' }
+    } catch (e) {
+      return { status: 'unavailable', version: 'unknown', reason: e.message }
+    }
   }
 
-  // 门禁链约束次序：preflight -> extract -> evidence_check，门禁失败不可绕过
-  async invoke({ operation }) {
-    // 实际执行由已注册的 policy_* 工具完成；这里返回结构化说明，供 Run Coordinator 编排
-    const order = ['policy.preflight', 'policy.extract', 'policy.evidence_check']
-    if (!order.includes(operation)) throw adapterError('PLUGIN_UNAVAILABLE', `unknown: ${operation}`)
-    throw adapterError('PLUGIN_UNAVAILABLE', `${operation} 须经 ctx.tools 的 policy_* 工具执行，见 policy-analysis/index.js:4236`)
+  async invoke({ operation, input, signal }) {
+    // 1) 优先 ctx.tools（policy_* 工具）
+    const toolMap = {
+      'policy.preflight': 'policy_preflight',
+      'policy.extract': 'policy_extract',
+      'policy.evidence_check': 'policy_evidence_check',
+    }
+    const toolName = toolMap[operation]
+    if (toolName) {
+      const r = await callTool(this.ctx, toolName, input || {}, signal)
+      if (r !== undefined) return r
+    }
+
+    if (this.ctx) throw adapterError('PLUGIN_UNAVAILABLE', '政策插件工具未注册；不会绕过禁用状态')
+    // 2) trusted standalone invocation
+    switch (operation) {
+      case 'policy.preflight':
+        return preflight(input || {})
+      case 'policy.extract':
+        return extract(input || {}, signal)
+      case 'policy.evidence_check':
+        return evidenceCheck(input || {})
+      default:
+        throw adapterError('PLUGIN_UNAVAILABLE', `unknown operation: ${operation}`)
+    }
   }
 }
 
-// 知识库适配器：rag_* 六工具（经 ctx.effect 注册）
+// 知识库适配器：优先复用 raganything-kb 已注册的 rag_* 工具（ctx.tools），
+// 自动继承其正确的 sidecar 端口/token/config；ctx.tools 不可用时回退 sidecar HTTP 直连。
 export class KbAdapter {
-  constructor({ ctx }) { this.ctx = ctx }
+  constructor({ ctx, baseUrl, fetchImpl, token } = {}) {
+    this.ctx = ctx
+    this.sidecar = new KbSidecar({ baseUrl, fetchImpl, token })
+  }
 
   manifest() { return MANIFESTS.kb }
 
   async health() {
-    const tools = this.ctx?.get?.('tools')
-    return { status: tools ? 'ready' : 'unavailable', version: '1.0.0' }
+    // 优先看工具是否已注册；否则探测 sidecar。
+    if (hasTool(this.ctx, 'rag_query') || hasTool(this.ctx, 'rag_docs')) {
+      return { status: 'ready', version: '1.0.0', detail: 'ctx.tools' }
+    }
+    const h = await this.sidecar.health()
+    return { status: h.status, version: '1.0.0', detail: h.detail }
   }
 
-  async invoke({ operation }) {
-    throw adapterError('PLUGIN_UNAVAILABLE', `${operation} 须经 ctx.tools 的 rag_* 工具执行，见 raganything-kb/lib/index.js:1220`)
+  async invoke({ operation, input, signal }) {
+    // 1) 优先 ctx.tools（rag_* 工具，token/端口全自动）
+    if (operation === 'kb.query') {
+      const scope = validateScope(input.scope)
+      const args = { query: input.query, mode: input.mode, only_need_context: true, ...scope }
+      const r = await callTool(this.ctx, 'rag_query', args, signal)
+      if (r !== undefined) return { answer: r, scope, via: 'ctx.tools' }
+    } else if (operation === 'kb.list_docs') {
+      const r = await callTool(this.ctx, 'rag_docs', {}, signal)
+      if (r !== undefined) return { documents: r, via: 'ctx.tools' }
+    } else if (operation === 'kb.status') {
+      const r = await callTool(this.ctx, 'rag_status', {}, signal)
+      if (r !== undefined) return { status: r, via: 'ctx.tools' }
+    } else if (operation === 'kb.ingest') {
+      const r = await callTool(this.ctx, 'rag_ingest', input, signal)
+      if (r !== undefined) return { ingest: r, via: 'ctx.tools' }
+    }
+
+    // 2) 回退 sidecar HTTP 直连
+    switch (operation) {
+      case 'kb.query': {
+        const params = {
+          query: input.query,
+          ...(input.mode ? { mode: input.mode } : {}),
+          only_need_context: true,
+          scope: validateScope(input.scope),
+        }
+        const taskId = await this.sidecar.startTask('query', params)
+        const result = await this.sidecar.waitTask(taskId, { signal })
+        return { mode: result?.mode, answer: result?.result?.answer ?? result?.answer ?? result, scope: input.scope, externalTaskId: taskId, via: 'sidecar' }
+      }
+      case 'kb.list_docs': {
+        const r = await this.sidecar.documents()
+        return { documents: r?.documents ?? [], total: r?.total ?? 0, via: 'sidecar' }
+      }
+      case 'kb.ingest': {
+        const params = { path: input.path, ...(input.title ? { title: input.title } : {}) }
+        const taskId = await this.sidecar.startTask('ingest', params)
+        return { taskId, op: 'ingest', via: 'sidecar' }
+      }
+      case 'kb.status': {
+        return this.sidecar.status()
+      }
+      default:
+        throw adapterError('PLUGIN_UNAVAILABLE', `unknown operation: ${operation}`)
+    }
   }
 }
 
@@ -88,4 +143,14 @@ export function createAdapter(kind, opts) {
     case 'kb': return new KbAdapter(opts)
     default: throw adapterError('PLUGIN_UNAVAILABLE', `unknown adapter kind: ${kind}`)
   }
+}
+
+export function validateScope(scope) {
+  const result = {}
+  for (const key of ['files', 'folders']) if (scope?.[key]?.length) {
+    if (!Array.isArray(scope[key]) || scope[key].length > 100 || scope[key].some(v => typeof v !== 'string' || !v.trim() || v.startsWith('/') || v.split(/[\\/]/).some(s => s === '..' || s === '.') || v.length > 500)) throw adapterError('PROJECT_SCOPE_REQUIRED', '指定有效项目目录或文件')
+    result[key] = [...new Set(scope[key])]
+  }
+  if (!Object.keys(result).length) throw adapterError('PROJECT_SCOPE_REQUIRED', '检索前必须指定项目范围')
+  return result
 }

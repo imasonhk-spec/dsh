@@ -1855,6 +1855,49 @@ export async function handlePackHttpRequest(req, res) {
         sendJson(res, 200, { ok: true, session:{...session,busy:qaBusySessions.has(session.id),task:qaTurnStates.get(session.id)||null} });
         return;
       }
+      // paHist-20261019：历史会话「更多操作」——重命名 / 置顶 / 归档（写穿持久化，失败回滚）
+      if (method === 'PUT') {
+        let raw;
+        try {
+          raw = await readRequestBody(req, 64 * 1024);
+        } catch (e) {
+          sendJson(res, 400, { ok: false, code: 'READ_FAIL', message: '请求体读取失败：' + (e && e.message ? e.message : String(e)) });
+          return;
+        }
+        const parsed = parseJsonBody(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          sendJson(res, 400, { ok: false, code: 'BAD_REQUEST', message: '请求体须为 JSON 对象' });
+          return;
+        }
+        const updated = updateQaSessionMeta(segs[2], parsed);
+        if (updated === null) {
+          sendJson(res, 404, { ok: false, code: 'UNKNOWN_SESSION', message: '问答会话不存在：' + segs[2] });
+          return;
+        }
+        if (updated === false) {
+          sendJson(res, 503, { ok: false, code: 'PERSISTENCE_FAILED', message: '会话修改保存失败，已回滚' });
+          return;
+        }
+        writeAudit({ kind: 'qa-session-update', sessionId: segs[2], fields: Object.keys(parsed) });
+        sendJson(res, 200, {
+          ok: true,
+          session: {
+            id: updated.id,
+            title: updated.title,
+            createdAt: updated.createdAt,
+            lastActiveAt: updated.lastActiveAt,
+            messageCount: updated.messages.length,
+            source: updated.source,
+            role: updated.role,
+            mode: updated.mode,
+            provider: updated.provider || '',
+            model: updated.model || '',
+            pinned: updated.pinned === true,
+            archived: updated.archived === true,
+          },
+        });
+        return;
+      }
       if (method === 'DELETE') {
         if(qaBusySessions.has(segs[2])){sendJson(res,409,{ok:false,code:'QA_BUSY',message:'后台尚在运行，删除不代表取消'});return;}
         const deleted=deleteQaSession(segs[2]);if(deleted===false){sendJson(res,503,{ok:false,code:'PERSISTENCE_FAILED',message:'历史删除保存失败，已回滚'});return;}
@@ -1869,7 +1912,7 @@ export async function handlePackHttpRequest(req, res) {
         sendJson(res, 200, { ok: true });
         return;
       }
-      sendJson(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED', message: '会话详情请使用 GET，删除请使用 DELETE' });
+      sendJson(res, 405, { ok: false, code: 'METHOD_NOT_ALLOWED', message: '会话详情请使用 GET，修改请使用 PUT，删除请使用 DELETE' });
       return;
     }
     // 其余 /qa/sessions/* 形态落到末尾 404
@@ -2739,6 +2782,9 @@ function normalizeQaSession(raw) {
     mode: str(r.mode),
     provider: str(r.provider),
     model: str(r.model),
+    // paHist-20261019：历史会话「更多操作」状态位（置顶 / 归档），历史数据缺失时为 false。
+    pinned: r.pinned === true,
+    archived: r.archived === true,
     messages,
   };
 }
@@ -2802,6 +2848,9 @@ function createQaSession(fields) {
     // v1.4.0：会话当前使用的模型路由（随提问可热切换；历史会话无此字段时由客户端回退默认）
     provider: typeof f.provider === 'string' ? f.provider : '',
     model: typeof f.model === 'string' ? f.model : '',
+    // paHist-20261019：历史会话「更多操作」状态位（置顶 / 归档）。
+    pinned: false,
+    archived: false,
     messages: [],
   };
   qaSessionsMap.set(session.id, session);
@@ -2814,6 +2863,27 @@ function createQaSession(fields) {
 function getQaSession(id) {
   loadQaSessions();
   return qaSessionsMap.get(String(id || '')) || null;
+}
+
+/**
+ * 更新一条 QA 会话的元数据（title / pinned / archived，历史会话「更多操作」）。
+ * 写穿持久化；失败回滚内存改动。返回 row；不存在返回 null；持久化失败返回 false。
+ */
+function updateQaSessionMeta(id, patch) {
+  loadQaSessions();
+  const key = String(id || '');
+  const row = qaSessionsMap.get(key);
+  if (!row) return null;
+  const p = patch && typeof patch === 'object' ? patch : {};
+  const before = { title: row.title, pinned: row.pinned, archived: row.archived };
+  if (typeof p.title === 'string' && p.title.trim()) row.title = p.title.trim().slice(0, QA_TITLE_MAX_CHARS);
+  if (typeof p.pinned === 'boolean') row.pinned = p.pinned;
+  if (typeof p.archived === 'boolean') row.archived = p.archived;
+  if (!persistQaSessions()) {
+    row.title = before.title; row.pinned = before.pinned; row.archived = before.archived;
+    return false;
+  }
+  return row;
 }
 
 /** 删除一条 QA 会话（仅本插件存储；DSH 侧会话历史不清理；返回是否存在） */
@@ -3313,8 +3383,10 @@ async function handleQa(req, res, body) {
 function handleQaSessionList(res) {
   loadQaSessions();
   evictQaSessions();
+  // paHist-20261019：置顶会话优先，其余按 lastActiveAt 倒序；pinned/archived 一并下发。
   const list = [...qaSessionsMap.values()].sort((a, b) =>
-    a.lastActiveAt < b.lastActiveAt ? 1 : a.lastActiveAt > b.lastActiveAt ? -1 : 0
+    (Number(b.pinned === true) - Number(a.pinned === true))
+    || (a.lastActiveAt < b.lastActiveAt ? 1 : a.lastActiveAt > b.lastActiveAt ? -1 : 0)
   );
   sendJson(res, 200, {
     ok: true,
@@ -3329,6 +3401,8 @@ function handleQaSessionList(res) {
       mode: s.mode,
       provider: s.provider || '',
       model: s.model || '',
+      pinned: s.pinned === true,
+      archived: s.archived === true,
     })),
   });
 }

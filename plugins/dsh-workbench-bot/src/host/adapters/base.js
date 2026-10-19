@@ -23,6 +23,7 @@ export const MANIFESTS = {
     operations: [
       { name: 'meeting.read_minutes', effect: 'read', idempotency: 'intrinsic', supportsCancel: false, recovery: 'retry_read', timeoutMs: 30000 },
       { name: 'meeting.list_recent', effect: 'read', idempotency: 'intrinsic', supportsCancel: false, recovery: 'retry_read', timeoutMs: 30000 },
+      { name: 'meeting.list_candidates', effect: 'read', idempotency: 'intrinsic', supportsCancel: false, recovery: 'retry_read', timeoutMs: 30000 },
       { name: 'meeting.extract_brief', effect: 'read', idempotency: 'intrinsic', supportsCancel: false, recovery: 'retry_read', timeoutMs: 60000 },
     ],
   },
@@ -63,6 +64,29 @@ export const MANIFESTS = {
     ],
   },
 }
+
+// Trusted operation effects drive timeout, recovery and write intent persistence.
+for (const name of ['configure', 'add_material', 'generate_outline', 'select_style', 'confirm_samples', 'patch']) MANIFESTS.ppt.operations.push({ name: `ppt.${name}`, effect: 'update', idempotency: 'reconcile', supportsCancel: false, recovery: 'reconcile_job', timeoutMs: 300000 })
+MANIFESTS.ppt.operations.push({ name: 'ppt.revise', effect: 'update', idempotency: 'reconcile', supportsCancel: false, recovery: 'reconcile_job', timeoutMs: 600000 })
+MANIFESTS.ppt.operations.push({ name: 'ppt.snapshot', effect: 'read', idempotency: 'intrinsic', supportsCancel: false, recovery: 'retry_read', timeoutMs: 30000 })
+MANIFESTS.ppt.operations.find(o => o.name === 'ppt.export').effect = 'update'
+
+// Public model inputs use attachment IDs, never host file paths or caller-supplied identities.
+const string = { type: 'string', minLength: 1, maxLength: 2000 }
+const fields = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false })
+const scope = fields(Object.fromEntries(['files', 'folders'].map(key => [key, { type: 'array', items: { type: 'string', minLength: 1, maxLength: 500 }, minItems: 1, maxItems: 100 }])))
+const inputs = {
+  'meeting.list_recent': fields({}), 'meeting.list_candidates': fields({}),
+  'meeting.read_minutes': fields({ minutesId: string }, ['minutesId']),
+  'meeting.extract_brief': fields({ minutesId: string }, ['minutesId']),
+  'kb.query': fields({ query: string, scope, mode: string }, ['query', 'scope']),
+  'kb.list_docs': fields({}),
+  'policy.preflight': fields({ attachmentId: string }),
+  'policy.extract': fields({ attachmentId: string }, ['attachmentId']),
+  'ppt.list_templates': fields({}),
+  'ppt.snapshot': fields({ projectId: string }, ['projectId']),
+}
+for (const manifest of Object.values(MANIFESTS)) for (const op of manifest.operations) if (inputs[op.name]) op.inputSchema = inputs[op.name]
 
 // HTTP 适配器基类：内部通过 fetch 调用插件后端 HTTP API
 export class HttpAdapter {

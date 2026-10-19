@@ -14,10 +14,10 @@
 //   - 因此不需要 HTTP 端口、cookie 交换、connection.requestRejection。
 //
 // 后端同一份
-//   huiwen 的 dataDir 是全局绝对路径，所有实例共用 ⇒ Bot 建的项目，
-//   用户在 DSH 的「汇文 PPT」面板里能直接看到并继续编辑。
+//   可信启动配置须将 HUIWEN_DATA_DIR 设在当前账号 DSH_HOME 内；
+//   同账号 Bot 与原 PPT 面板共享项目，不同账号须分别配置目录。
 import { createRequire } from 'node:module'
-import { realpathSync } from 'node:fs'
+import { realpathSync, readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import path from 'node:path'
 import { Readable } from 'node:stream'
@@ -25,6 +25,20 @@ import { Readable } from 'node:stream'
 const PKG = '@local/huiwen-ppt'
 
 let corePromise
+let packageRoot
+export function assertPptScope(env = process.env) {
+  const home = env.DSH_HOME && path.resolve(env.DSH_HOME)
+  const data = env.HUIWEN_DATA_DIR && path.resolve(env.HUIWEN_DATA_DIR)
+  if (!home || !data || !data.startsWith(home + path.sep)) throw Object.assign(new Error('汇文 PPT 需配置本账号 DSH_HOME 内的 HUIWEN_DATA_DIR；禁止使用共享默认目录'), { code: 'PPT_SCOPE_REQUIRED' })
+  return data
+}
+export async function sourceModule(name) {
+  await core()
+  if (!['config', 'projects', 'brief', 'outline', 'exporter', 'revise', 'workflow'].includes(name)) throw new Error('Unsupported PPT module')
+  return import(pathToFileURL(path.join(packageRoot, 'server', name + '.js')).href)
+}
+export async function packageVersion() { await core(); return JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version }
+
 
 /** 解析并加载 huiwen 的 server/server.js（确保与插件本体同一模块实例）。 */
 export function core() {
@@ -36,6 +50,7 @@ export function core() {
     } catch {
       base = path.dirname(realpathSync(require_.resolve(PKG)))
     }
+    packageRoot = base
     const href = pathToFileURL(path.join(base, 'server', 'server.js')).href
     return await import(href)
   })()
@@ -45,9 +60,13 @@ export function core() {
 // 惰性 initCore 保护：只有从未初始化（idle）时才触发，避免与 huiwen-ppt 插件自身的
 // apply→initCore 重复竞争；boot 处于 booting/indexing 时等待其就绪。
 export async function ensureReady() {
+  const dataDir = assertPptScope()
   const mod = await core()
   const boot = mod.bootState()
-  if (boot.state === 'ready' || boot.state === 'degraded') return boot.state
+  if (boot.state === 'ready' || boot.state === 'degraded') {
+    if (path.resolve((await sourceModule('config')).config().dataDir) !== dataDir) throw Object.assign(new Error('已加载 PPT 数据目录不属于本账号配置'), { code: 'PPT_SCOPE_REQUIRED' })
+    return boot.state
+  }
   if (boot.state === 'idle') {
     await mod.initCore()
     return mod.bootState().state
@@ -66,14 +85,19 @@ export async function ensureReady() {
  * 用合成 req/res 调 huiwen 的 handlePackRequest。
  * @param {string} routePath 去掉 /api/huiwen-ppt 前缀后的路径，如 '/api/projects/new'
  */
-export async function callApi(routePath, { method = 'GET', body } = {}) {
+export async function callApi(routePath, { method = 'GET', body, raw, query } = {}) {
   const mod = await core()
-  const payload = body === undefined ? null : Buffer.from(JSON.stringify(body), 'utf8')
+  // raw：直接传字节（材料上传等二进制场景）；否则 JSON 序列化 body。
+  const payload = raw !== undefined
+    ? Buffer.isBuffer(raw) ? raw : Buffer.from(String(raw), 'utf8')
+    : body === undefined ? null : Buffer.from(JSON.stringify(body), 'utf8')
   const req = Readable.from(payload ? [payload] : [])
   req.method = method
   req.headers = { host: '127.0.0.1', 'content-type': 'application/json' }
 
   const url = new URL('http://127.0.0.1/api/huiwen-ppt' + routePath)
+  // query 参数（如材料上传的 filename）
+  if (query) for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v)
   const chunks = []
   let status = 200
   const res = {

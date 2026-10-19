@@ -1,5 +1,6 @@
 // Run Coordinator：任务图、状态机、幂等、恢复（设计文档 11 节落地）
 import { randomUUID, createHash } from 'node:crypto'
+import { fail } from '../roles.js'
 
 export const RUN_STATES = [
   'created', 'planning', 'discussing', 'ready', 'running', 'waiting_user',
@@ -10,7 +11,7 @@ export const RUN_STATES = [
 export const STEP_STATES = [
   'queued', 'running', 'waiting_external', 'succeeded', 'failed_retryable',
   'failed_terminal', 'cancel_requested', 'cancelled', 'interrupted',
-  'outcome_unknown', 'superseded',
+  'outcome_unknown', 'superseded', 'waiting_user',
 ]
 
 // 状态机转移表（design 11.1）
@@ -48,7 +49,12 @@ export class RunCoordinator {
 
   // 创建 Run
   createRun({ ownerId, conversationId, triggerMessageId, taskSpec, inputRefs, sourceConversationId, sourceMessageIds }) {
-    const id = `run_${randomUUID().slice(0, 8)}`
+    if (ownerId !== this.store.state.ownerId) throw fail('SOURCE_NOT_FOUND', '任务账号不匹配', 404)
+    if (triggerMessageId) {
+      const known = Object.values(this.store.state.runs).find(r => r.ownerId === ownerId && r.conversationId === conversationId && r.triggerMessageId === triggerMessageId)
+      if (known) return known
+    }
+    const id = `run_${randomUUID()}`
     const run = {
       id,
       ownerId,
@@ -59,9 +65,10 @@ export class RunCoordinator {
       taskSpec,
       inputRefs: inputRefs || [],
       state: 'created',
+      createdAt: Date.now(), usage: { requests: 0, tokens: 0, turns: 0 },
       revision: 1,
       planRevision: 1,
-      budget: { maxTurns: 12, maxRequests: 20, maxTokens: 4000, maxMinutes: 20 },
+      budget: { maxTurns: 12, maxRequests: 20, maxTokens: 64000, maxMinutes: 20 },
     }
     this.store.state.runs[id] = run
     this.store.bump()
@@ -72,6 +79,7 @@ export class RunCoordinator {
   transition(runId, to, opts = {}) {
     const run = this.store.state.runs[runId]
     if (!run) throw new Error(`unknown run: ${runId}`)
+    if (run.state === to) return run
     if (!this.canTransition(run.state, to)) {
       throw new Error(`invalid transition: ${run.state} -> ${to}`)
     }
@@ -94,7 +102,7 @@ export class RunCoordinator {
     })
     const step = {
       id, runId, operation, adapterId, dependsOn,
-      inputDigest, idempotencyKey: key,
+      input: input || {}, inputDigest, idempotencyKey: key, planRevision: planRevision ?? run.planRevision,
       state: 'queued', attempt: 0, resultRefs: [],
     }
     this.store.state.steps[id] = step
@@ -129,11 +137,38 @@ export class RunCoordinator {
     const run = this.store.state.runs[runId]
     run.planRevision += 1
     for (const step of Object.values(this.store.state.steps)) {
-      if (step.runId === runId && step.state === 'queued') {
+      if (step.runId === runId && ['queued', 'waiting_user'].includes(step.state)) {
         step.state = 'superseded'
       }
     }
     this.store.bump()
     return run
+  }
+
+  // —— A22 版本锁 ——
+  // 同一源实体（如 PPT projectId）的 artifact 版本链：取当前最高 revision。
+  artifactHeadRevision(ownerId, sourceEntityId) {
+    if (!sourceEntityId) return 0
+    let max = 0
+    for (const a of Object.values(this.store.state.artifacts)) {
+      if (a.ownerId === ownerId && a.sourceEntityId === sourceEntityId) {
+        const rev = a.revision || 0
+        if (rev > max) max = rev
+      }
+    }
+    return max
+  }
+
+  // 乐观锁校验：expectedRevision 与当前头版本不一致则冲突。
+  checkRevisionLock({ ownerId, sourceEntityId, expectedRevision }) {
+    if (expectedRevision == null || !sourceEntityId) return { ok: true, head: null }
+    const head = this.artifactHeadRevision(ownerId, sourceEntityId)
+    if (head !== Number(expectedRevision)) {
+      const e = new Error(`revision conflict: expected ${expectedRevision}, current ${head}`)
+      e.code = 'REVISION_CONFLICT'
+      e.details = { expectedRevision, head }
+      throw e
+    }
+    return { ok: true, head }
   }
 }

@@ -18,7 +18,8 @@
  *   .pdf/.docx/.xlsx）+ 中栏整体拖拽上传（仅拦截 Files 类型拖拽，不影响文本拖放）；
  *   经 POST /api/policy-analysis/upload 落盘本机 DSH 附件目录（~/.dsh/policy-analysis/uploads），
  *   上传成功以附件 chips 展示（文件名/大小/移除），附件名+绝对路径写入任务简报「附件清单」；
- *   上传不等于公开性确认：绝不因上传改变门禁状态（publicConfirmed 保持用户手动勾选）。
+ *   上传不等于公开性确认：绝不因上传改变门禁状态（publicConfirmed 仅由「智能问答」页手动勾选；
+ *   文件解析页自 PA-GATEHINT-20261019 起只作提示，不再列出「公开性确认」步骤）。
  * - 三页签工作台：文件解析（上传→开始解析→SSE 过程/结果→归档）/ 解析归档（筛选查询/查看/
  *   @文件问答/删除）/ 智能问答（v1.3.0 新增）。三个视图全部常挂载，用 style.display
  *   切换（绝不条件卸载，避免丢状态/断 SSE）；门禁 state（publicConfirmed/role/mode/source）跨视图共享。
@@ -42,6 +43,11 @@
  * - v1.5.2 修复：智能问答视图内左侧「问答历史」卡（aside.pa-history，与左侧导航二级目录
  *   功能重复）整块移除，问答页改为单列全宽聊天列（.pa-qa-grid 单列）；会话列表 / 新建会话 /
  *   删除一律由左侧导航「智能问答」二级目录承担（完成 v1.3.1「视图内改为纯会话框」的收尾）。
+ * - v1.5.6-qats.2（PA-GATEHINT-20261019）：「公开性确认」不再作为独立步骤列出——文件解析页
+ *   去掉步骤卡与其勾选框，改为步骤列表上方一行浅色提示（仅提示：只受理已完全公开材料、上传
+ *   不等于授权）；步骤重编号为 1 上传政策文件 / 2 解析配置；解析页视为已确认，开始解析与文件
+ *   chip「源文件预览」不再被 publicConfirmed 阻断（文件为空/任务进行中仍阻断）；智能问答页
+ *   公开性确认条与「源文件预览确认」弹窗（读取正文前显式确认，底线 1）保持原样。
  */
 window.__ModuleLoader__.load({
   id: '@local/policy-analysis',
@@ -56,7 +62,7 @@ window.__ModuleLoader__.load({
     const OPEN_EVENT = 'cappacks:open-policy-analysis';
     const SIDEBAR_EVENT = 'pa:policy-analysis-sidebar';
     // 版本徽标（左侧导航品牌块显示；随功能版本更新）
-    const VERSION = 'v1.5.5-qats.2';
+    const VERSION = 'v1.5.6-qats.2'; /* PA-GATEHINT-20261019 */
     /* v1.3.2 固定缺省（文件解析/智能问答界面均不再暴露角色/模式/来源选择，一处定义两处使用）：
      * 政策解读缺省执行角色与分析模式 + 「仅知识库」保守来源（底线：严禁联网兜底；
      * QA 附件经 policy_extract 读文件、无附件为模型知识作答，检索行为受指令约束）。 */
@@ -368,6 +374,12 @@ window.__ModuleLoader__.load({
       qaSessionsEmpty: '暂无历史会话',
       qaSessionCount: '共 {n} 个会话',
       qaSessionsLoadFail: '会话列表加载失败：',
+      /* paHist-20261019：历史会话「更多操作」 */
+      qaMoreActions: '更多操作', qaPinSession: '置顶', qaUnpinSession: '取消置顶', qaRenameSession: '重命名',
+      qaArchiveSession: '归档', qaUnarchiveSession: '取消归档', qaDeleteSession: '删除',
+      qaArchivedTitle: '归档会话', qaArchivedEmpty: '暂无归档会话', qaBackHistory: '返回历史会话',
+      qaPinOk: '已置顶', qaUnpinOk: '已取消置顶', qaRenameOk: '已重命名', qaRenameEmpty: '会话名称不能为空',
+      qaArchiveOk: '已归档', qaUnarchiveOk: '已取消归档', qaMoreFail: '操作失败：',
       qaSessionOpenFail: '会话加载失败：',
       qaSessionSwitchBusy: '回答生成中，请稍后再切换会话',
       qaReloadBtn: '刷新',
@@ -672,6 +684,12 @@ window.__ModuleLoader__.load({
       qaSessionsEmpty: 'No sessions yet',
       qaSessionCount: '{n} session(s)',
       qaSessionsLoadFail: 'Failed to load sessions: ',
+      /* paHist-20261019：history conversation "more actions" */
+      qaMoreActions: 'More actions', qaPinSession: 'Pin', qaUnpinSession: 'Unpin', qaRenameSession: 'Rename',
+      qaArchiveSession: 'Archive', qaUnarchiveSession: 'Unarchive', qaDeleteSession: 'Delete',
+      qaArchivedTitle: 'Archived', qaArchivedEmpty: 'No archived sessions', qaBackHistory: 'Back to history',
+      qaPinOk: 'Pinned', qaUnpinOk: 'Unpinned', qaRenameOk: 'Renamed', qaRenameEmpty: 'Session name cannot be empty',
+      qaArchiveOk: 'Archived', qaUnarchiveOk: 'Unarchived', qaMoreFail: 'Action failed: ',
       qaSessionOpenFail: 'Failed to open session: ',
       qaSessionSwitchBusy: 'Answer is streaming — please wait before switching sessions',
       qaReloadBtn: 'Refresh',
@@ -819,6 +837,10 @@ window.__ModuleLoader__.load({
       /* v1.3.0 左侧导航：归档盒（解析归档）/ 会话气泡（智能问答），heroicons outline 路径 */
       archive: 'M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m-3.75-3.75h7.5M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z',
       chat: 'M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z',
+      /* paHist-20261019：历史会话「更多操作」图标（重命名 / 置顶 / 删除） */
+      edit: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10',
+      pin: 'M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5',
+      trash: 'M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0',
     };
     function Icon(props) {
       return h('svg', {
@@ -942,6 +964,17 @@ window.__ModuleLoader__.load({
       '@keyframes pa-qablink { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }',
       '.pa-qadel { opacity: 0; transition: opacity .12s; }',
       '.pa-qasession:hover .pa-qadel, .pa-qadel-on { opacity: 1; }',
+      /* paHist-20261019：历史会话「更多操作」菜单 / 行内重命名 / 归档入口 */
+      '.pa-qamore { display: flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; border: 0; border-radius: 6px; background: none; color: var(--dsw-alias-label-tertiary); font-size: 13px; line-height: 1; cursor: pointer; padding: 0; }',
+      '.pa-qamore:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }',
+      '.pa-qasessionmenu { display: flex; flex-direction: column; gap: 1px; padding: 4px; background: var(--dsw-alias-bg-layer-1, #fff); border: 1px solid var(--dsw-alias-border-l2, #dfe5ee); border-radius: 10px; box-shadow: 0 8px 26px rgba(23,43,77,.16); }',
+      '.pa-qasessionmenu button { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; border: 0; background: none; border-radius: 7px; padding: 6px 8px; font-size: 11.5px; color: var(--dsw-alias-label-primary, #2a3342); cursor: pointer; }',
+      '.pa-qasessionmenu button:hover { background: var(--dsw-alias-interactive-bg-hover); }',
+      '.pa-qasessionmenu button.danger { color: #d4380d; }',
+      '.pa-qasessionmenu button.danger:hover { background: rgba(212,56,13,.08); }',
+      '.pa-qareninput { width: 100%; min-width: 0; font-size: 11px; padding: 3px 6px; border: 1px solid var(--dsw-alias-state-business-primary, #2563eb); border-radius: 7px; background: var(--dsw-alias-bg-layer-1, #fff); color: var(--dsw-alias-label-primary, #2a3342); }',
+      '.pa-archtoggle { width: 100%; text-align: left; border: 0; background: none; color: var(--dsw-alias-label-tertiary); cursor: pointer; font-size: 10px; padding: 4px 6px; border-radius: 7px; }',
+      '.pa-archtoggle:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }',
       /* 对齐会议助手 mt-rail、mt-brand、mt-railnav、mt-railitem 的尺寸和主题令牌。 */
       '.pa-root { position: relative; }',
       '.pa-module-nav{width:216px;flex:none;display:flex;flex-direction:column;background:var(--dsw-specific-sidebar-fill);border-right:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);overflow-y:auto;overflow-x:hidden;user-select:none}',
@@ -1134,6 +1167,11 @@ window.__ModuleLoader__.load({
       const [qaSessionsLoading, setQaSessionsLoading] = React.useState(false);
       const [qaMsg, setQaMsg] = React.useState(null); // null | {kind:'ok'|'error'|'info', text} 轻量提示
       const [qaPendingDeleteId, setQaPendingDeleteId] = React.useState(null); // 会话两段式删除（3 秒恢复）
+      /* paHist-20261019：历史会话「更多操作」（置顶/重命名/归档/删除）+ 归档视图开关 */
+      const [qaSessionMenu, setQaSessionMenu] = React.useState(null); // { id, anchor }
+      const [qaRenaming, setQaRenaming] = React.useState(null); // { id, value } 行内重命名
+      const [qaShowArchived, setQaShowArchived] = React.useState(false); // false=历史会话 / true=归档会话
+      const qaSessionMenuRef = React.useRef(null);
       const [qaArchiving, setQaArchiving] = React.useState(false);
       const qaSendAbortRef = React.useRef(null); // qa 流式中止控制器
       /* paBg-20261005：跨页恢复轮询（面板卸载即停；回执留在 sessionStorage，切回自动续跑） */
@@ -1829,7 +1867,7 @@ window.__ModuleLoader__.load({
       };
 
       const startParse = async () => {
-        if (queueBusyRef.current || !files.length || !publicConfirmed) return;
+        if (queueBusyRef.current || !files.length) return; /* PA-GATEHINT-20261019：解析页视为已确认，不再以 publicConfirmed 阻断 */
         const snapshot = files.slice();
         const options = {source,role,mode,depth:parseDepth,publicConfirmed:true,...(parseModel ? {provider:parseModel.provider,model:parseModel.model}: {})};
         queueBusyRef.current = true;setParseBusy(true);setParseMsg(null);
@@ -2422,6 +2460,111 @@ window.__ModuleLoader__.load({
           setQaMsg({ kind: 'error', text: tr('qaDelFail') + (e && e.message ? e.message : String(e)) });
         }
       };
+
+      /* ════════ paHist-20261019：历史会话「更多操作」 ════════
+       * 与知识库插件（dsh-raganything-kb）历史对话一致：置顶 / 重命名 / 归档 / 删除。
+       * 服务端真源 PUT /api/policy-analysis/qa/sessions/:id；本地列表「置顶优先 + lastActiveAt 倒序」。 */
+      const sortQaSessions = (list) => [...list].sort((a, b) =>
+        (Number(b.pinned === true) - Number(a.pinned === true))
+        || String(b.lastActiveAt || '').localeCompare(String(a.lastActiveAt || '')));
+
+      const patchQaSession = async (id, body) => {
+        const resp = await fetch('/api/policy-analysis/qa/sessions/' + encodeURIComponent(id), {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+          credentials: 'same-origin',
+        });
+        let data = null;
+        try { data = await resp.json(); } catch { data = null; }
+        if (!resp.ok || !data || data.ok !== true) {
+          throw new Error((data && data.message) || ('HTTP ' + resp.status));
+        }
+        return data.session;
+      };
+
+      const applyQaSessionPatch = (id, patch) => {
+        setQaSessions((list) => sortQaSessions(list.map((x) => (x.id === id ? { ...x, ...patch } : x))));
+      };
+
+      const toggleQaPin = async (s) => {
+        setQaSessionMenu(null);
+        const next = !(s.pinned === true);
+        try {
+          await patchQaSession(s.id, { pinned: next });
+          applyQaSessionPatch(s.id, { pinned: next });
+          setQaMsg({ kind: 'ok', text: next ? tr('qaPinOk') : tr('qaUnpinOk') });
+        } catch (e) {
+          setQaMsg({ kind: 'error', text: tr('qaMoreFail') + (e && e.message ? e.message : String(e)) });
+        }
+      };
+
+      const toggleQaArchive = async (s) => {
+        setQaSessionMenu(null);
+        const next = !(s.archived === true);
+        try {
+          await patchQaSession(s.id, { archived: next });
+          applyQaSessionPatch(s.id, { archived: next });
+          if (next && qaActiveId === s.id) { setQaActiveId(null); setQaMessages([]); }
+          if (!next && qaShowArchived && qaSessions.filter((x) => x.archived === true && x.id !== s.id).length === 0) {
+            setQaShowArchived(false);
+          }
+          setQaMsg({ kind: 'ok', text: next ? tr('qaArchiveOk') : tr('qaUnarchiveOk') });
+        } catch (e) {
+          setQaMsg({ kind: 'error', text: tr('qaMoreFail') + (e && e.message ? e.message : String(e)) });
+        }
+      };
+
+      const commitQaRename = async (id, value) => {
+        const title = String(value || '').trim().slice(0, 40);
+        setQaRenaming(null);
+        const cur = qaSessions.find((x) => x.id === id);
+        if (!title) { setQaMsg({ kind: 'error', text: tr('qaRenameEmpty') }); return; }
+        if (cur && (cur.title || '') === title) return;
+        try {
+          await patchQaSession(id, { title });
+          applyQaSessionPatch(id, { title });
+          setQaMsg({ kind: 'ok', text: tr('qaRenameOk') });
+        } catch (e) {
+          setQaMsg({ kind: 'error', text: tr('qaMoreFail') + (e && e.message ? e.message : String(e)) });
+        }
+      };
+
+      const qaMenuStyle = (anchor) => {
+        const width = 152, height = 4 * 30 + 12;
+        let left = 12, top = 120;
+        try {
+          if (anchor && typeof anchor.getBoundingClientRect === 'function') {
+            const r = anchor.getBoundingClientRect();
+            const vw = window.innerWidth || 1024;
+            const vh = window.innerHeight || 768;
+            left = Math.max(8, Math.min(r.right - width, vw - width - 8));
+            top = r.bottom + 4;
+            if (top + height > vh - 8) top = Math.max(8, r.top - height - 4);
+          }
+        } catch { /* 退化到默认坐标 */ }
+        return { position: 'fixed', left, top, width, zIndex: 70 };
+      };
+
+      /* 菜单外点击 / Esc / 滚动即关闭 */
+      React.useEffect(() => {
+        if (!qaSessionMenu) return undefined;
+        const close = (ev) => {
+          if (qaSessionMenuRef.current && ev.target && qaSessionMenuRef.current.contains(ev.target)) return;
+          setQaSessionMenu(null);
+        };
+        const onKey = (ev) => { if (!ev || ev.key === 'Escape') setQaSessionMenu(null); };
+        document.addEventListener('mousedown', close, true);
+        document.addEventListener('keydown', onKey);
+        window.addEventListener('resize', onKey);
+        window.addEventListener('scroll', onKey, true);
+        return () => {
+          document.removeEventListener('mousedown', close, true);
+          document.removeEventListener('keydown', onKey);
+          window.removeEventListener('resize', onKey);
+          window.removeEventListener('scroll', onKey, true);
+        };
+      }, [qaSessionMenu]);
 
       /* 发送提问：POST /api/policy-analysis/qa（响应即 SSE，帧型与 /ask 同形；
        * status 帧携带 sessionId/isNew —— 新会话由服务端创建并插入列表顶部选中；
@@ -4697,11 +4840,14 @@ window.__ModuleLoader__.load({
        * 点击 = 切到智能问答并激活该会话（GET /qa/sessions/:id 载入历史） */
       const renderQaSubnavSessionItem = (s) => {
         const active = s.id === qaActiveId;
-        const pending = qaPendingDeleteId === s.id;
+        const pinned = s.pinned === true;
+        const renaming = Boolean(qaRenaming && qaRenaming.id === s.id);
+        const menuOpen = Boolean(qaSessionMenu && qaSessionMenu.id === s.id);
         return h('div', {
           key: s.id, role: 'button', tabIndex: 0, className: 'pa-qasession',
-          onClick: () => { setTab('qa'); void openQaSession(s); },
-          onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { setTab('qa'); void openQaSession(s); } },
+          'aria-current': active ? 'true' : undefined,
+          onClick: () => { if (renaming) return; setTab('qa'); void openQaSession(s); },
+          onKeyDown: (e) => { if (renaming) return; if (e.key === 'Enter' || e.key === ' ') { setTab('qa'); void openQaSession(s); } },
           style: {
             display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
             background: active ? T.accentSoft : 'transparent',
@@ -4710,24 +4856,59 @@ window.__ModuleLoader__.load({
           },
         },
           h('div', { style: { flex: 1, minWidth: 0 } },
-            h('div', {
-              title: s.title || tr('qaNewSession'),
-              style: {
-                fontSize: 11, fontWeight: active ? 600 : 500, color: active ? T.accentStrong : T.text1,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4,
-              },
-            }, s.title || tr('qaNewSession')),
+            renaming
+              ? h('input', {
+                  autoFocus: true, className: 'pa-qareninput', value: qaRenaming.value,
+                  'aria-label': tr('qaRenameSession'),
+                  onClick: (e) => e.stopPropagation(),
+                  onChange: (e) => setQaRenaming({ id: s.id, value: e.target.value }),
+                  onKeyDown: (e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') { e.preventDefault(); void commitQaRename(s.id, qaRenaming.value); }
+                    if (e.key === 'Escape') { e.preventDefault(); setQaRenaming(null); }
+                  },
+                  onBlur: () => void commitQaRename(s.id, qaRenaming.value),
+                })
+              : h('div', {
+                  title: s.title || tr('qaNewSession'),
+                  style: {
+                    fontSize: 11, fontWeight: active ? 600 : 500, color: active ? T.accentStrong : T.text1,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4,
+                  },
+                }, (pinned ? '📌 ' : '') + (s.title || tr('qaNewSession'))),
             h('div', { style: { fontSize: 9.5, color: T.text3, lineHeight: 1.4 } },
               fmtQaTime(s.lastActiveAt) + ' · ' + tr('qaMsgCount', { n: Number(s.messageCount) || 0 })),
           ),
           h('button', {
             type: 'button',
-            className: 'pa-chipx pa-qadel' + (pending ? ' pa-qadel-on' : ''),
-            title: pending ? tr('qaDelConfirm') : tr('recBtnDelete'),
-            'aria-label': pending ? tr('qaDelConfirm') : tr('recBtnDelete'),
-            onClick: (e) => { e.stopPropagation(); requestQaDelete(s); },
-            style: pending ? { color: TINTS.rose.chip } : null,
-          }, '×'),
+            className: 'pa-qamore',
+            title: tr('qaMoreActions'),
+            'aria-label': tr('qaMoreActions'),
+            'aria-haspopup': 'menu',
+            'aria-expanded': menuOpen ? 'true' : 'false',
+            onClick: (e) => {
+              e.stopPropagation();
+              setQaSessionMenu(menuOpen ? null : { id: s.id, anchor: e.currentTarget });
+            },
+          }, '⋯'),
+          menuOpen ? h('div', {
+            ref: qaSessionMenuRef, className: 'pa-qasessionmenu', role: 'menu', style: qaMenuStyle(qaSessionMenu.anchor),
+            onClick: (e) => e.stopPropagation(),
+          },
+            h('button', { type: 'button', role: 'menuitem', onClick: () => void toggleQaPin(s) },
+              Icon({ d: ICONS.pin, size: 12 }), h('span', null, pinned ? tr('qaUnpinSession') : tr('qaPinSession'))),
+            h('button', { type: 'button', role: 'menuitem',
+              onClick: () => { setQaRenaming({ id: s.id, value: s.title || '' }); setQaSessionMenu(null); } },
+              Icon({ d: ICONS.edit, size: 12 }), h('span', null, tr('qaRenameSession'))),
+            h('button', { type: 'button', role: 'menuitem', onClick: () => void toggleQaArchive(s) },
+              Icon({ d: ICONS.archive, size: 12 }), h('span', null, s.archived === true ? tr('qaUnarchiveSession') : tr('qaArchiveSession'))),
+            h('button', { type: 'button', role: 'menuitem', className: 'danger',
+              onClick: () => {
+                setQaSessionMenu(null);
+                if (window.confirm('确认删除会话「' + (s.title || '未命名会话') + '」？\n删除后不可恢复。')) void deleteQaSession(s);
+              } },
+              Icon({ d: ICONS.trash, size: 12 }), h('span', null, tr('qaDeleteSession'))),
+          ) : null,
         );
       };
 
@@ -4762,13 +4943,26 @@ window.__ModuleLoader__.load({
             style: { fontSize: 10, padding: '1px 4px', flexShrink: 0 },
           }, Icon({ d: ICONS.refresh, size: 11 })),
         ),
-        // 会话列表（超出 max-height 分区内滚）
+        // 会话列表（超出 max-height 分区内滚）；paHist-20261019：历史 / 归档两个视图切换
         h('div', { className: 'pa-scroll', style: { flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, padding: '2px 0' } },
-          qaSessions.length === 0
-            ? h('div', { style: { fontSize: 10.5, color: T.text3, padding: '6px 2px', lineHeight: 1.5 } },
-                qaSessionsLoading ? tr('recLoading') : tr('qaSessionsEmpty'))
-            : qaSessions.map(renderQaSubnavSessionItem),
+          (() => {
+            const visible = qaSessions.filter((s) => (s.archived === true) === qaShowArchived);
+            if (visible.length === 0) {
+              return h('div', { style: { fontSize: 10.5, color: T.text3, padding: '6px 2px', lineHeight: 1.5 } },
+                qaSessionsLoading ? tr('recLoading') : (qaShowArchived ? tr('qaArchivedEmpty') : tr('qaSessionsEmpty')));
+            }
+            return visible.map(renderQaSubnavSessionItem);
+          })(),
         ),
+        // 归档会话入口 / 返回历史（与知识库插件「归档对话」一致）
+        h('button', {
+          type: 'button', className: 'pa-archtoggle',
+          onClick: () => { setQaShowArchived((v) => !v); setQaSessionMenu(null); setQaRenaming(null); },
+          'aria-pressed': qaShowArchived ? 'true' : 'false',
+        }, qaShowArchived
+          ? '← ' + tr('qaBackHistory')
+          : tr('qaArchivedTitle') + (qaSessions.filter((s) => s.archived === true).length
+              ? ' · ' + qaSessions.filter((s) => s.archived === true).length : '')),
       );
 
       /* 消息气泡：用户右（附件 chip 展示名称）/ 助手左（pre-wrap；流式无增量时「思考中…」闪烁占位）
@@ -5082,23 +5276,26 @@ window.__ModuleLoader__.load({
       const renderPrototypeParse=()=>h('section',{className:'pa-proto-page',onDragEnter,onDragOver,onDragLeave,onDrop},
         renderDropOverlay(),h('div',{className:'pa-parse-grid'},
           h('div',{className:'pa-parse-left'},
-            h('article',{className:'pa-step'},h('h3',null,h('b',null,'1'),'公开性确认'),h('p',null,'本系统仅处理已完全公开的政策材料。'),renderParseGateBar(),h('p',{className:'pa-muted'},'不得上传内部、涉密或尚未公开信息；上传不等于授权。')),
-            h('article',{className:'pa-step'},h('h3',null,h('b',null,'2'),'上传政策文件'),h('button',{type:'button',className:'pa-dropbox',disabled:uploadBusy||parseBusy,onClick:()=>pickFiles()},h('strong',null,uploadBusy?'上传中…':'点击选择或拖拽文件到这里'),h('span',null,'支持 PDF / DOCX / XLSX，单文件不超过 30MB')),
+            /* PA-GATEHINT-20261019：公开性确认不再作为独立步骤卡列出，只保留一行提示（无勾选框）。 */
+            h('div',{className:'pa-gatehint',role:'note','aria-label':'公开性提示',style:{display:'flex',alignItems:'flex-start',gap:7,padding:'9px 13px',borderRadius:12,background:'#fff8e8',border:'1px solid #f4e1b8',color:'#a16b13',fontSize:11.5,lineHeight:1.6}},
+              h('span',{'aria-hidden':'true',style:{flexShrink:0,fontWeight:700}},'提示'),
+              h('span',null,'本系统仅处理已完全公开的政策材料：不得上传内部、涉密或尚未公开信息，上传不等于授权。')),
+            h('article',{className:'pa-step'},h('h3',null,h('b',null,'1'),'上传政策文件'),h('button',{type:'button',className:'pa-dropbox',disabled:uploadBusy||parseBusy,onClick:()=>pickFiles()},h('strong',null,uploadBusy?'上传中…':'点击选择或拖拽文件到这里'),h('span',null,'支持 PDF / DOCX / XLSX，单文件不超过 30MB')),
               h('div',{className:'pa-file-chips'},files.map(f=>{
                 const t=fileTasks[f.key]||{};
                 return h('div',{key:f.key,className:'pa-file-chip'+(f.key===activeFileKey?' active':'' )},h('button',{type:'button',disabled:parseBusy,onClick:()=>selectParseFile(f)},f.name,' · ',taskStateNames[t.status]||'待解析'),
                   smallButton('×',()=>removeFile(f.key),parseBusy||!!(t.jobId&&!['done','failed'].includes(t.status))),
-                  moreMenu([smallButton('源文件预览',()=>setPreviewFile({name:f.name,path:f.path}),!publicConfirmed),smallButton('复制真实路径',()=>copyFilePath(f))]));
+                  moreMenu([smallButton('源文件预览',()=>setPreviewFile({name:f.name,path:f.path})),smallButton('复制真实路径',()=>copyFilePath(f))]));
               })),uploadMsg?h('p',{role:'status',className:'pa-error'},uploadMsg.text):null),
-            h('article',{className:'pa-step'},h('h3',null,h('b',null,'3'),'解析配置'),h('div',{className:'pa-config-grid'},h('label',null,'解读模型',renderModelPicker('parse')),h('label',null,'解读深度',h('select',{className:'pa-input',value:parseDepth,disabled:parseBusy,onChange:e=>setParseDepth(e.target.value)},h('option',{value:'standard'},'标准解读'),h('option',{value:'quick'},'快速摘要'),h('option',{value:'deep'},'深度研读')))),
-              h('button',{type:'button',className:'pa-btn pa-start',disabled:parseBusy||uploadBusy||!files.length||!publicConfirmed,onClick:()=>void startParse()},parseBusy?'解析中…':'开始解析'),parseBusy?smallButton('停止接收（后台继续）',stopParse):null,
+            h('article',{className:'pa-step'},h('h3',null,h('b',null,'2'),'解析配置'),h('div',{className:'pa-config-grid'},h('label',null,'解读模型',renderModelPicker('parse')),h('label',null,'解读深度',h('select',{className:'pa-input',value:parseDepth,disabled:parseBusy,onChange:e=>setParseDepth(e.target.value)},h('option',{value:'standard'},'标准解读'),h('option',{value:'quick'},'快速摘要'),h('option',{value:'deep'},'深度研读')))),
+              h('button',{type:'button',className:'pa-btn pa-start',disabled:parseBusy||uploadBusy||!files.length,onClick:()=>void startParse()},parseBusy?'解析中…':'开始解析'),parseBusy?smallButton('停止接收（后台继续）',stopParse):null,
               files.some(f=>fileTasks[f.key]&&fileTasks[f.key].status==='paused')?h('p',null,'点击开始恢复原任务，不重复提交'):null,renderParseMsg(),smallButton('来源 / 角色 / 模式配置',()=>setConfigOpen(true),parseBusy||qaSendBusy))),
           h('div',{className:'pa-parse-right'},
             h('article',{className:'pa-result-card'},h('div',{className:'pa-card-head'},h('h3',null,'解析结果'),h('span',{className:'pa-status'},parseResultState==='streaming'?'RUNNING':parseResultState==='done'?'DONE':parseResultState==='error'?'FAILED':parseResultState==='paused'?'PAUSED':'IDLE'),
-              moreMenu([smallButton('完整报告 / 原文',()=>setFullReportOpen(true),!parseResult),smallButton('复制',copyParseResult,!parseResult),smallButton('下载 Word',downloadParseDocx,!parseResult||parseDocxBusy),smallButton('编辑 / 备注',()=>openRecordEdit(parseRecord),!parseRecord),smallButton('手工归档',openArchive,!parseRecord||parseResultState!=='done'),smallButton('@文件问答',()=>jumpToFileQa(parseRecord),!parseRecord),smallButton('来源预览',()=>setPreviewFile({name:parseRecord.fileName,path:parseRecord.filePath}),!parseRecord||!parseRecord.filePath||!publicConfirmed),smallButton('重试选中文件',()=>{if(activeFile){updateFileTask(activeFile.key,{status:'pending',jobId:null,recordId:null});void startParse();}},!activeFile||parseBusy||!!(activeFile&&fileTasks[activeFile.key]&&!['done','failed'].includes(fileTasks[activeFile.key].status)))])),
+              moreMenu([smallButton('完整报告 / 原文',()=>setFullReportOpen(true),!parseResult),smallButton('复制',copyParseResult,!parseResult),smallButton('下载 Word',downloadParseDocx,!parseResult||parseDocxBusy),smallButton('编辑 / 备注',()=>openRecordEdit(parseRecord),!parseRecord),smallButton('手工归档',openArchive,!parseRecord||parseResultState!=='done'),smallButton('@文件问答',()=>jumpToFileQa(parseRecord),!parseRecord),smallButton('来源预览',()=>setPreviewFile({name:parseRecord.fileName,path:parseRecord.filePath}),!parseRecord||!parseRecord.filePath),smallButton('重试选中文件',()=>{if(activeFile){updateFileTask(activeFile.key,{status:'pending',jobId:null,recordId:null});void startParse();}},!activeFile||parseBusy||!!(activeFile&&fileTasks[activeFile.key]&&!['done','failed'].includes(fileTasks[activeFile.key].status)))])),
               parseRecord&&parseRecord.structureVersion===1?h('div',{className:'pa-structured'},h('h4',null,parseRecord.title),h('p',null,parseRecord.summary),h('ol',null,parseRecord.points.map((p,i)=>h('li',{key:i},h('span',null,p.text),(p.references||[]).map((r,j)=>h('blockquote',{key:j,title:r.filePath},r.quote,' · 待人工复核'))))),h('div',{className:'pa-keywords'},parseRecord.keywords.map((k,i)=>h('span',{key:i},k))),parseRecord.structureWarning?h('p',{className:'pa-warn'},parseRecord.structureWarning):null,h('p',{className:'pa-muted'},'关键词为模型生成；全部结果待人工复核')):
                 parseResultState==='streaming'?h('div',{className:'pa-result-empty'},'正在解析，请以真实完成事件为准…'):
-                parseResult?h('div',{className:'pa-structured'},h('p',{className:'pa-warn'},(parseRecord&&parseRecord.structureWarning)||'结构化信息暂缺，保留真实报告'),renderMdBlocks(parseResult)):h('div',{className:'pa-result-empty'},'尚未开始解析。确认材料公开性并上传文件后，点击“开始解析”。')),
+                parseResult?h('div',{className:'pa-structured'},h('p',{className:'pa-warn'},(parseRecord&&parseRecord.structureWarning)||'结构化信息暂缺，保留真实报告'),renderMdBlocks(parseResult)):h('div',{className:'pa-result-empty'},'尚未开始解析。上传政策文件后，点击“开始解析”。')),
             h('article',{className:'pa-log-card'},renderParseTerm()))));
       const renderPrototypeRecords=()=>h('section',{className:'pa-proto-page'},h('article',{className:'pa-record-card'},h('div',{className:'pa-card-head'},h('h3',null,'解析归档'),smallButton('刷新',()=>void loadRecords(),recLoading)),
         h('div',{className:'pa-record-filters'},h('input',{className:'pa-input',value:recQ,placeholder:'搜索标题、文件或内容',onChange:e=>setRecQ(e.target.value),onKeyDown:e=>{if(e.key==='Enter')void loadRecords();}}),
