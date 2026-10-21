@@ -18,8 +18,8 @@
  *   .pdf/.docx/.xlsx）+ 中栏整体拖拽上传（仅拦截 Files 类型拖拽，不影响文本拖放）；
  *   经 POST /api/policy-analysis/upload 落盘本机 DSH 附件目录（~/.dsh/policy-analysis/uploads），
  *   上传成功以附件 chips 展示（文件名/大小/移除），附件名+绝对路径写入任务简报「附件清单」；
- *   上传不等于公开性确认：绝不因上传改变门禁状态（publicConfirmed 仅由「智能问答」页手动勾选；
- *   文件解析页自 PA-GATEHINT-20261019 起只作提示，不再列出「公开性确认」步骤）。
+ *   上传不等于公开性确认：绝不因上传改变门禁状态（publicConfirmed 自 PA-QAHINT-20261021 起不再要求
+ *   用户逐次勾选——文件解析页与智能问答页各只有一行提示；请求体仍恒带 publicConfirmed:true）。
  * - 三页签工作台：文件解析（上传→开始解析→SSE 过程/结果→归档）/ 解析归档（筛选查询/查看/
  *   @文件问答/删除）/ 智能问答（v1.3.0 新增）。三个视图全部常挂载，用 style.display
  *   切换（绝不条件卸载，避免丢状态/断 SSE）；门禁 state（publicConfirmed/role/mode/source）跨视图共享。
@@ -48,6 +48,14 @@
  *   不等于授权）；步骤重编号为 1 上传政策文件 / 2 解析配置；解析页视为已确认，开始解析与文件
  *   chip「源文件预览」不再被 publicConfirmed 阻断（文件为空/任务进行中仍阻断）；智能问答页
  *   公开性确认条与「源文件预览确认」弹窗（读取正文前显式确认，底线 1）保持原样。
+ * - v1.5.6-qats.3（PA-QAHINT-20261021）：智能问答页「我确认当前问答所用材料全部为已公开政策
+ *   材料」勾选框改为**纯提示**（无勾选动作、不再阻断发送）；材料签名变化与新建/清空会话不再
+ *   撤销确认，导航门禁 chip 恒为「已确认公开材料」；请求体契约不变（仍恒带 publicConfirmed:true）。
+ * - v1.5.6-qats.4（PA-HIST2-20261021）：「智能问答」左侧历史会话每条右侧新增「更多操作」⋯ 菜单——
+ *   置顶 / 取消置顶、重命名（行内输入）、归档 / 取消归档、删除，与会议助手（dsh-meetai）
+ *   历史对话一致；历史区底部新增「归档会话 · N」入口（归档视图内「← 返回历史会话」）；
+ *   列表按「置顶优先 + lastActiveAt 倒序」；服务端新增 PUT /qa/sessions/:id
+ *   （title/pinned/archived 写穿持久化，失败回滚），列表与详情下发 pinned/archived 布尔位。
  */
 window.__ModuleLoader__.load({
   id: '@local/policy-analysis',
@@ -62,7 +70,7 @@ window.__ModuleLoader__.load({
     const OPEN_EVENT = 'cappacks:open-policy-analysis';
     const SIDEBAR_EVENT = 'pa:policy-analysis-sidebar';
     // 版本徽标（左侧导航品牌块显示；随功能版本更新）
-    const VERSION = 'v1.5.6-qats.2'; /* PA-GATEHINT-20261019 */
+    const VERSION = 'v1.5.6-qats.4'; /* PA-GATEHINT-20261019 PA-QAHINT-20261021 PA-HIST2-20261021 */
     /* v1.3.2 固定缺省（文件解析/智能问答界面均不再暴露角色/模式/来源选择，一处定义两处使用）：
      * 政策解读缺省执行角色与分析模式 + 「仅知识库」保守来源（底线：严禁联网兜底；
      * QA 附件经 policy_extract 读文件、无附件为模型知识作答，检索行为受指令约束）。 */
@@ -1074,7 +1082,7 @@ window.__ModuleLoader__.load({
         if (task) { setParseJobId(task.jobId || null); setParseRecord(task.record || null); setParseResult((task.record && (task.record.reportMarkdown || task.record.result)) || task.result || ''); setParseResultState(task.status === 'done' ? 'done' : task.status === 'failed' ? 'error' : 'idle'); setParseLog(task.logs || []); }
         else { setParseRecord(null); setParseResult(''); setParseResultState('idle'); setParseLog([]); }
       };
-      /* PA-QALAYOUT-20261005：默认已勾选「我确认当前问答所用材料全部为已公开政策材料」 */
+      /* PA-QALAYOUT-20261005 默认已确认公开性；PA-QAHINT-20261021 起界面不再要求逐次勾选（仅提示）。 */
       const [publicConfirmed, setPublicConfirmed] = React.useState(true);
       const [messages, setMessages] = React.useState([]);
       const [activeEvidence, setActiveEvidence] = React.useState(null);
@@ -1287,7 +1295,7 @@ window.__ModuleLoader__.load({
         if(materialSigRef.current===null){materialSigRef.current=materialSignature;return;}
         if(materialSigRef.current===materialSignature)return;
         materialSigRef.current=materialSignature;
-        setPublicConfirmed(false);
+        /* PA-QAHINT-20261021：界面不再要求逐次确认，材料变化不再撤销（否则导航 chip 会误报「待确认」）。 */
       },[materialSignature]);
 
       /* 新消息入列 */
@@ -2330,7 +2338,7 @@ window.__ModuleLoader__.load({
         stopQaRecoverPoll(); /* paBg-20261005：新建会话停掉上一回合的恢复轮询，避免旧结果回填 */
         setQaActiveId(null);qaPendingRef.current=null;setQaBackgroundState('idle');try{sessionStorage.removeItem(QA_RECOVERY_KEY);}catch{}
         setQaMessages([]);
-        setQaInput('');setQaFiles([]);setPublicConfirmed(false);
+        setQaInput('');setQaFiles([]); /* PA-QAHINT-20261021：不再撤销公开性确认 */
         setQaThinking('');
         // v1.4.0：新会话回到系统默认模型
         setQaModel(qaModels.def || null);
@@ -2384,7 +2392,7 @@ window.__ModuleLoader__.load({
         }
         /* paBg-20261005：切换会话即停掉上一回合的恢复轮询，避免旧结果覆盖当前会话 */
         stopQaRecoverPoll();
-        setPublicConfirmed(false);setQaFiles([]);
+        /* PA-QAHINT-20261021：不再撤销公开性确认 */setQaFiles([]);
         setQaActiveId(s.id);
         try {
           const resp = await fetch('/api/policy-analysis/qa/sessions/' + encodeURIComponent(s.id), { credentials: 'same-origin' });
@@ -2573,10 +2581,7 @@ window.__ModuleLoader__.load({
         if (qaSendBusy || uploadBusy || ['paused','unknown','running'].includes(qaBackgroundState)) return;
         const q = qaInput.trim();
         if (!q) return;
-        if (!publicConfirmed) {
-          setQaMsg({ kind: 'error', text: tr('qaGateNeed') });
-          return;
-        }
+        /* PA-QAHINT-20261021：不再以公开性确认阻断问答发送（提示已上移到确认条）。 */
         qaIdRef.current += 1;
         const aiId = 'qa' + qaIdRef.current;
         const attach = qaFiles.map((f) => ({ name: f.name, path: f.path }));
@@ -5310,7 +5315,8 @@ window.__ModuleLoader__.load({
       const renderPrototypeQa=()=>h('section',{className:'pa-proto-page pa-qa-page'},h('div',{className:'pa-qa-grid'},
         h('div',{className:'pa-chat-card',onDragEnter,onDragOver,onDragLeave,onDrop:onQaDrop},
           renderDropOverlay(),
-          h('div',{className:'pa-qa-gate'},h('label',null,h('input',{type:'checkbox',checked:publicConfirmed,disabled:qaSendBusy||uploadBusy,onChange:e=>setPublicConfirmed(e.target.checked)}),' 我确认当前问答所用材料全部为已公开政策材料'),smallButton('清空',clearQaInput,qaSendBusy)),
+          /* PA-QAHINT-20261021：不再要求逐次勾选确认，仅保留一行提示（无勾选框）。 */
+          h('div',{className:'pa-qa-gate pa-qa-hint',role:'note','aria-label':'公开性提示'},h('span',null,'提示 · 本系统仅受理已完全公开的政策材料；请勿提交内部、涉密或尚未公开信息。'),smallButton('清空',clearQaInput,qaSendBusy)),
           h('div',{className:'pa-card-head'},h('h3',null,qaHeaderTitle),moreMenu([smallButton('归档本次问答',archiveQaSession,qaArchiveDisabled),smallButton('查询真实任务结果',()=>void recoverQa(),qaSendBusy||!qaPendingRef.current),smallButton('刷新当前会话',()=>{if(qaActiveId)void openQaSession({id:qaActiveId});},qaSendBusy||qaBackendUnknown||!qaActiveId),smallButton('停止接收（不取消后台）',()=>qaSendAbortRef.current&&qaSendAbortRef.current.abort(),!qaSendBusy)])),
           qaMsg?h('div',{className:'pa-inline-status',role:'status'},qaMsg.text):null,
           h('div',{className:'pa-chat-scroll',ref:qaFlowRef,onScroll:onQaFlowScroll},qaMessages.length?qaMessages.map((m,i)=>h('div',{key:m.id},renderQaMsgItem(m),m.role==='assistant'&&m.state!=='streaming'?smallButton('重试问题',()=>{const previous=qaMessages.slice(0,i).reverse().find(x=>x.role==='user');if(previous){setQaInput(previous.text);setQaMsg({kind:'info',text:'已带入原问题；确认材料后发送'});}},qaSendBusy):null)):h('div',{className:'pa-welcome'},'你好，我可以围绕公开政策文件进行结构化解读与问答。请选择文件或直接输入问题。所有结果待人工复核。')),
@@ -5333,7 +5339,7 @@ window.__ModuleLoader__.load({
                 h('button',{type:'button',className:'pa-compose-btn',title:'引用政策文件','aria-label':'引用文件',disabled:qaSendBusy,onClick:()=>{setFilePickerOpen(true);void loadRecords();}},'@'),
                 h('span',{className:'pa-bar-gap'}),
                 renderModelPicker('qa'), /* PA-QALAYOUT-20261005：模型选择紧贴发送按钮左侧 */
-                h('button',{type:'button',className:'pa-compose-send',title:'发送','aria-label':'发送',disabled:qaSendBusy||qaBackendUnknown||uploadBusy||!publicConfirmed||!qaInput.trim(),onClick:()=>void sendQa()},qaSendBusy?'…':'➤'))),
+                h('button',{type:'button',className:'pa-compose-send',title:'发送','aria-label':'发送',disabled:qaSendBusy||qaBackendUnknown||uploadBusy||!qaInput.trim(),onClick:()=>void sendQa()},qaSendBusy?'…':'➤'))),
             h('p',{className:'pa-muted'},'PDF / DOCX / XLSX ≤30MB · 当前材料公开确认后发送 · 待人工复核')))));
       const closeLocalModal=()=>{setConfigOpen(false);setFilePickerOpen(false);setFullReportOpen(false);setPendingPreview(null);setPreviewConfirmed(false);};
       const modalProps=label=>({className:'pa-local-overlay',role:'dialog','aria-modal':true,'aria-label':label,onClick:e=>{if(e.target===e.currentTarget)closeLocalModal();},onKeyDown:e=>{if(e.key==='Escape'){e.stopPropagation();closeLocalModal();}else if(e.key==='Tab'){const nodes=[...e.currentTarget.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]')];const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last&&last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first&&first.focus();}}}});
