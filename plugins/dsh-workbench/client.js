@@ -158,11 +158,23 @@ window.__ModuleLoader__.load({
       const m = String(location.pathname || '').match(/^(\/mu\/[^/]+)/)
       return `${location.origin}${m ? m[1] : ''}/rag`
     }
-    /** 探活：sidecar 有任意 HTTP 响应即视为已安装。 */
+    /** 带超时的 fetch：工作台加载不允许被探活请求无限期挂住（新账号 RAG sidecar 未就绪时 /rag/* 会挂起很久）。 */
+    function fetchWithTimeout(url, options, timeoutMs) {
+      const opts = Object.assign({}, options || {})
+      const controller = typeof AbortController === 'function' ? new AbortController() : null
+      if (controller) opts.signal = controller.signal
+      const timer = window.setTimeout(() => { try { if (controller) controller.abort() } catch (_) {} }, timeoutMs)
+      return fetch(url, opts).then(
+        (response) => { window.clearTimeout(timer); return response },
+        (error) => { window.clearTimeout(timer); throw error },
+      )
+    }
+
+    /** 探活：sidecar 有任意 HTTP 响应即视为已安装；超时视为未安装（不再拖住能力包清单）。 */
     function probeKbInstalled() {
-      return fetch(kbApiBase() + '/health', { cache: 'no-store' })
+      return fetchWithTimeout(kbApiBase() + '/health', { cache: 'no-store' }, 3500)
         .then(() => true)
-        .catch(() => fetch(kbApiBase() + '/', { cache: 'no-store' }).then(() => true).catch(() => false))
+        .catch(() => fetchWithTimeout(kbApiBase() + '/', { cache: 'no-store' }, 2500).then(() => true).catch(() => false))
     }
 
     /* ----------------------------- 小工具/图标 ----------------------------- */
@@ -264,8 +276,25 @@ window.__ModuleLoader__.load({
       }, [])
 
       const load = useCallback(() => {
-        // Host 清单为主要数据源；kb / meeting 由各自 sidecar 探活补入已安装能力。
-        const meeting = fetch('/api/meeting-assistant/templates', { cache: 'no-store' })
+        // 能力包清单先在拿到时立即渲染；kb / meeting 探活只做增量补充，且各有超时，
+        // 任何一侧挂住都不会让页面永久停留在「正在获取能力包…」。
+        const capabilitiesPromise = fetchWithTimeout(API + '/capabilities', { cache: 'no-store' }, 15000)
+          .then((r) => {
+            if (!r.ok) throw new Error('HTTP ' + r.status)
+            return r.json()
+          })
+          .then((data) => {
+            if (!data || !Array.isArray(data.capabilities)) throw new Error('返回数据格式不正确')
+            setError('')
+            setCaps(data.capabilities.slice())
+            return data.capabilities.slice()
+          })
+          .catch((e) => {
+            setError('无法加载能力包清单：' + String((e && e.message) || e))
+            setCaps([])
+            return []
+          })
+        const meeting = fetchWithTimeout('/api/meeting-assistant/templates', { cache: 'no-store' }, 5000)
           .then((response) => response.ok ? response.json() : null)
           .then((data) => data && Array.isArray(data.templates) ? {
             id: 'meeting', title: '会议助手', description: '录音与上传、模板生成纪要，按日期整理并支持纪要问答', entryKey: 'cap:meeting', order: 10,
@@ -274,24 +303,13 @@ window.__ModuleLoader__.load({
         const kb = probeKbInstalled().then((ok) => ok ? {
           id: 'kb', title: '知识库', description: '多模态 RAG 知识库：文档上传解析、@ 引用问答、共享协作与回收站。', entryKey: 'cap:kb', order: 5,
         } : null).catch(() => null)
-        Promise.all([
-          fetch(API + '/capabilities', { cache: 'no-store' }).then((r) => {
-            if (!r.ok) throw new Error('HTTP ' + r.status)
-            return r.json()
-          }),
-          meeting,
-          kb,
-        ]).then(([data, installedMeeting, installedKb]) => {
-          if (!data || !Array.isArray(data.capabilities)) throw new Error('返回数据格式不正确')
-          const capabilities = data.capabilities.slice()
+        Promise.all([capabilitiesPromise, meeting, kb]).then(([base, installedMeeting, installedKb]) => {
+          if (!base || base.length === 0) return
+          const capabilities = base.slice()
           for (const extra of [installedMeeting, installedKb]) {
             if (extra && !capabilities.some((item) => item && item.id === extra.id)) capabilities.push(extra)
           }
-          setError('')
           setCaps(capabilities)
-        }).catch((e) => {
-          setError('无法加载能力包清单：' + String((e && e.message) || e))
-          setCaps([])
         })
       }, [])
 

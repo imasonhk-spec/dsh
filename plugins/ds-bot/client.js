@@ -12816,9 +12816,12 @@ function groupsFor({ mode, plain = false }) {
 }
 function readMode(storage = globalThis.localStorage) {
   try {
-    return storage.getItem(STORAGE.surface) === "agent" ? "agent" : "bot";
+    // 2026-10-22: 普通账号默认进入经典 DSH 主页（agent surface），不再默认落到 DS-Bot 页面。
+    // 用户手动切到 DS Bot 后 writeMode("bot") 会写入 STORAGE.surface，此后仍按用户选择走。
+    const saved = storage.getItem(STORAGE.surface);
+    return saved === "bot" ? "bot" : "agent";
   } catch {
-    return "bot";
+    return "agent";
   }
 }
 function writeMode(mode, storage = globalThis.localStorage) {
