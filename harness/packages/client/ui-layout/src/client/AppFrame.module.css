@@ -290,3 +290,45 @@
 .overlayLayer > * {
   pointer-events: auto;
 }
+
+/* Only mobile WEB opts in; Electron and widths >=768 retain existing rules. */
+.frame[data-mobile] {
+  max-height: 100dvh;
+  box-sizing: border-box;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  grid-template-rows: minmax(0, 1fr);
+}
+.frame[data-mobile] .centerCol { grid-column: 2; grid-row: 1; }
+.frame[data-mobile] .rightbarCol { grid-column: 3; grid-row: 1; }
+.frame[data-mobile][data-drawer-open] .sidebarCol {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+}
+.frame[data-mobile][data-drawer-open] .sidebarCol > :last-child {
+  flex: 1;
+  min-height: 0;
+}
+.drawerBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  border: 0;
+  background: rgb(0 0 0 / 0.38);
+  touch-action: manipulation;
+}
+.drawerClose {
+  min-height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  color: inherit;
+  background: var(--dsw-specific-sidebar-fill);
+  text-align: end;
+  padding: 8px 12px;
+  touch-action: manipulation;
+}

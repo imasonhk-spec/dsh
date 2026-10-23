@@ -205,7 +205,9 @@ export class InputHub implements SessionInputResolver {
     signal: AbortSignal,
   ): Promise<SubmitOutcome> {
     if (text === '' && attachmentIds.length === 0) return Promise.resolve({ kind: 'success' })
-    return this.conversation().sendSession(session, text, attachmentIds, mode, signal)
+    return this.rootCtx.waterfall('conversation/local-submit', {
+      sessionId: session.sessionId, text, attachmentIds, mode, signal,
+    }, () => this.conversation().sendSession(session, text, attachmentIds, mode, signal))
   }
 
   /**

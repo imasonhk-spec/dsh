@@ -141,6 +141,8 @@ export async function summarizeWithLlm(
     )
   }
 
+  const modelInfo = await ctx.llm.resolveModelInfo(target.provider, target.model, signal)
+  const maxTokens = Math.min(config.maxTokens, modelInfo.maxOutputTokens ?? config.maxTokens)
   const assembler = new BlockAssembler()
   const messages: RequestMessage[] = [
     ...input.messages,
@@ -154,7 +156,7 @@ export async function summarizeWithLlm(
     model: target.model,
     messages,
     ...input.tools === undefined ? {} : { tools: [...input.tools] },
-    maxTokens: config.maxTokens,
+    maxTokens,
     sessionId: agent.session.id,
     purpose: 'compaction',
     ...signal === undefined ? {} : { signal },
@@ -174,7 +176,7 @@ export async function summarizeWithLlm(
     llmStreamCall: true,
     provider: options.provider,
     model: options.model,
-    maxTokens: config.maxTokens,
+    maxTokens,
     ...(assembler.usage === undefined ? {} : { usage: assembler.usage }),
   }
 }

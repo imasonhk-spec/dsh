@@ -68,6 +68,12 @@
             config:
               - id: compaction-basic
                 name: '@deepseek-ai/dsh-compaction-basic'
+                config:
+                  modelPolicies:
+                    - provider: gufo-local
+                      model: huiwen-2-agron:latest
+                      headroomTokens: 4096
+                      maxTokens: 2048
               - id: command-compact
                 name: '@deepseek-ai/dsh-command-compact'
               - id: tool-result-pruner

@@ -57,3 +57,9 @@ export function computeColumns(viewport: number, sidebar: number, rightbar: numb
     : Math.min(available, clampWidth(rightbar, RIGHTBAR_MIN, viewport * RIGHTBAR_MAX_RATIO))
   return { sidebar: s, center: Math.max(0, viewport - s - r), rightbar: r }
 }
+
+/** Mobile web drawer geometry; desktop column solve remains unchanged. */
+export const MOBILE_DRAWER_BREAKPOINT = 768
+export function mobileDrawerWidth(viewport: number): number {
+  return Math.max(0, Math.min(320, viewport - 48))
+}

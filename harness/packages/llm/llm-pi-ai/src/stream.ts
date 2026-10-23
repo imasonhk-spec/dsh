@@ -71,18 +71,25 @@ function classifyPiAiError(message: string): string {
  * Map a terminal pi-ai event to the harness finish reason.
  * @param message - the assistant message carried by the `done` or `error` event.
  * @param contextWindow - resolved catalog capacity for usage-based overflow detection.
+ * @param maxTokens - effective output budget used by this request, when known.
  * @returns the mapped harness reason. Recognized error text, `stop` usage above
- *   `contextWindow`, and zero-output `length` usage that fills the window map
+ *   `contextWindow`, zero-output `length`, and `length` below its output budget
+ *   whose total usage fills the window map
  *   to `CONTEXT_WINDOW_EXCEEDED`; a `stop` with no content blocks maps to an
  *   `EMPTY_RESPONSE` error, while terminal `pending` and `deferred` states map
  *   to non-retryable `PI_AI_ERROR` failures.
  */
-export function mapStopReason(message: AssistantMessage, contextWindow?: number): FinishReason {
+export function mapStopReason(message: AssistantMessage, contextWindow?: number, maxTokens?: number): FinishReason {
   const piAiOverflow = isContextOverflow(message, contextWindow)
   const harnessOverflow = message.stopReason === 'error'
     && message.errorMessage !== undefined
     && isContextWindowExceededError(message.errorMessage)
-  if (piAiOverflow || harnessOverflow) {
+  const exhaustedContext = message.stopReason === 'length'
+    && contextWindow !== undefined
+    && maxTokens !== undefined
+    && message.usage.output < maxTokens
+    && message.usage.input + message.usage.cacheRead + message.usage.cacheWrite + message.usage.output >= contextWindow
+  if (piAiOverflow || harnessOverflow || exhaustedContext) {
     return {
       kind: 'error',
       failure: {
@@ -136,6 +143,7 @@ export function mapStopReason(message: AssistantMessage, contextWindow?: number)
  * @param callerSignal - caller cancellation state; an aborted caller makes any
  *   in-band terminal error an aborted finish.
  * @param requestedModel - request model identity recorded for durable replay.
+ * @param maxTokens - effective output budget used by this request, when known.
  * @returns the harness chunks, ending with `usage` then `finish`; throws
  *   `LlmError` (`STREAM_CLOSED`) if the source ends without a terminal event.
  */
@@ -144,6 +152,7 @@ export async function* toStreamChunks(
   contextWindow?: number,
   callerSignal?: AbortSignal,
   requestedModel?: string,
+  maxTokens?: number,
 ): AsyncGenerator<StreamChunk> {
   // pi-ai contentIndex ↔ our block index map 1:1 (both count blocks from 0
   // in stream order), but we track ids per index for tool calls.
@@ -209,7 +218,7 @@ export async function* toStreamChunks(
         yield { type: 'usage', usage: mapUsage(event.message.usage) }
         yield {
           type: 'finish',
-          reason: mapStopReason(event.message, contextWindow),
+          reason: mapStopReason(event.message, contextWindow, maxTokens),
           replayState: toPiReplayState(event.message, requestedModel),
         }
         return
@@ -222,6 +231,7 @@ export async function* toStreamChunks(
           reason: mapStopReason(
             callerSignal?.aborted ? { ...event.error, stopReason: 'aborted' } : event.error,
             contextWindow,
+            maxTokens,
           ),
         }
         return

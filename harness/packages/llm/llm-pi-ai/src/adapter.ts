@@ -310,6 +310,7 @@ export class PiAiAdapter extends LlmAdapter {
       name: resolvedModel.name,
       inputModalities: [...resolvedModel.input],
       context: { contextWindow: resolvedModel.contextWindow },
+      maxOutputTokens: resolvedModel.maxTokens,
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
       ...reasoningInfo(resolvedModel, defaultLevel),
     }
@@ -387,7 +388,9 @@ export class PiAiAdapter extends LlmAdapter {
         // Harness-owned and therefore win collisions.
         headers: requestHeaders(profile.headers),
       })
-      const iterator = toStreamChunks(events, model.contextWindow, options.signal, model.id)[Symbol.asyncIterator]()
+      const iterator = toStreamChunks(
+        events, model.contextWindow, options.signal, model.id, options.maxTokens ?? model.maxTokens,
+      )[Symbol.asyncIterator]()
       let exhausted = false
       try {
         while (true) {

@@ -7,7 +7,7 @@ import { chromium } from 'playwright'
 import { expect, it } from 'vitest'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import yaml from 'js-yaml'
-import { WELCOME_NOTICE_VERSION, launchWebScaffold, watchConsole } from './scaffold.ts'
+import { launchWebScaffold, watchConsole } from './scaffold.ts'
 import { ZH_BROWSER_LOCALE } from './support.ts'
 
 it('imports settings.yaml into the profile once and applies the imported values', async () => {
@@ -15,10 +15,10 @@ it('imports settings.yaml into the profile once and applies the imported values'
   writeFileSync(join(harnessHome, 'settings.yaml'), [
     'ui-theme:', '  fontSize: 16',
     'ui-developer-tools:', '  enabled: false',
-    'ui-onboarding:', `  welcomeNoticeVersion: '${WELCOME_NOTICE_VERSION}'`,
+    'ui-conversation:', '  busyEnter: steer',
     '',
   ].join('\n'))
-  const scaffold = await launchWebScaffold({ harnessHome, welcomeNoticePending: true })
+  const scaffold = await launchWebScaffold({ harnessHome })
   const browser = await chromium.launch()
   try {
     const patchPath = join(harnessHome, 'profiles', 'scaffold', 'cordis.patch.yml')
@@ -27,7 +27,7 @@ it('imports settings.yaml into the profile once and applies the imported values'
       (yaml.load(readFileSync(patchPath, 'utf8'), { schema: entryListSchema }) as Row[]).find(row => row.id === id)?.config
     await expect.poll(() => config('ui-theme')?.['fontSize'], { timeout: 10_000 }).toBe(16)
     expect(config('ui-settings')?.['enabled']).toBe(false)
-    expect(config('ui-settings-general')?.['welcomeNoticeVersion']).toBe(WELCOME_NOTICE_VERSION)
+    expect(config('ui-conversation')?.['busyEnter']).toBe('steer')
     expect(existsSync(join(harnessHome, 'settings.yaml'))).toBe(false)
     expect(readFileSync(join(harnessHome, 'settings.yaml.imported'), 'utf8')).toContain('fontSize: 16')
 

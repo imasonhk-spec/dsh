@@ -1,5 +1,5 @@
 ---
-description: "dsh Web 客户端的模型设置与产品引导插件：提供商行、API 密钥管理、模型列表与 DeepSeek 首次运行弹窗。"
+description: "dsh Web 客户端的模型设置与产品引导插件：提供商行、API 密钥管理、模型列表与 DeepSeek 首次运行凭据步骤。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`dsh-client-ui-settings-models` 是 dsh Web 客户端的 Models 设置页面：用户可以配置 API 密钥（以只写方式存入 profile 的凭据引用之下）、编辑每个提供商的模型列表，并手工声明自定义 pi-ai 路由；页面以提供商行展示，一次只展开一张编辑卡片。该页面把提供商目录、设置文档与凭据描述合并为一个共享快照，因此行的状态在三个方面始终一致。它还会带首次运行的用户走两个有序弹窗——版本化内测声明，以及按条件显示的官方 DeepSeek 凭据步骤。
+`dsh-client-ui-settings-models` 是 dsh Web 客户端的 Models 设置页面：用户可以配置 API 密钥（以只写方式存入 profile 的凭据引用之下）、编辑每个提供商的模型列表，并手工声明自定义 pi-ai 路由；页面以提供商行展示，一次只展开一张编辑卡片。该页面把提供商目录、设置文档与凭据描述合并为一个共享快照，因此行的状态在三个方面始终一致。它还会带首次运行的用户走按条件显示的官方 DeepSeek 凭据步骤。
 
 ## 目录
 
@@ -29,7 +29,7 @@ kind: "package-reference"
 
 存在已存储目录错误的提供商仍显示诊断以及编辑、删除入口。添加操作只面向已注册的 settings 命名空间，因此不可用的命名空间不会留下无法打开编辑器的按钮。保存被拒绝时，编辑器保持打开并展示 Host 诊断。
 
-Host 配置 `credentialOnboarding` 默认为 `true`。Electron preload 标记会自动抑制凭证步骤；其他原生壳可以在插件行中把它设为 `false`；模型设置页和欢迎须知仍然可用。Host 通过 `webserver/index-inject` 发布这个公开的布尔值，Client 在注册弹窗前校验它。它是页面初始化数据，不是持久化的完成标记。
+Host 配置 `credentialOnboarding` 默认为 `true`。Electron preload 标记会自动抑制凭证步骤；其他原生壳可以在插件行中把它设为 `false`；模型设置页仍然可用。Host 通过 `webserver/index-inject` 发布这个公开的布尔值，Client 在注册弹窗前校验它。它是页面初始化数据，不是持久化的完成标记。
 
 ### API 密钥
 
@@ -47,9 +47,9 @@ Host 配置 `credentialOnboarding` 默认为 `true`。Electron preload 标记会
 
 **添加模型提供商**是新增卡片的唯一入口：只要任一带编辑器的设置 namespace 已挂载就会出现，下述两种方式任一可继续时才可点击。卡片打开后顶部是分段式的方式切换，下方一行小字说明所选方式的用途：**第三方模型提供商**承载休眠目录提供商选择框与提供商编辑器——裸挂载的 `llm-pi-ai` 在任何路由存在之前就能提供其完整的已安装 catalog；**自定义模型 API**承载为 pi-ai 不提供的路由（中转站、自部署服务或其他兼容 OpenAI / Anthropic 协议的接口）准备的创建表单。某种方式只在其 namespace 已挂载时提供；只剩一种方式时卡片以该方式为标题直接显示表单；namespace 已无可采用的提供商或没有可声明的协议时，对应方式会被禁用并把原因作为悬停提示。面板在其方式首次显示时挂载，之后在卡片打开且该方式仍被提供期间保持挂载但隐藏，因此切换方式不会丢掉任何一边的草稿；任一面板有写入或端点探测进行中时滑块锁定，因为此时切换会让结果落到看不见的面板上。每个 tab 通过 id 控制其面板，关闭任一面板都会忘记目录草稿的目标。自定义表单会索要唯一的 **Provider ID**、端点、协议与至少一个可唯一识别的模型，因为没有东西能为它们兜底。协议选择框以产品名称显示各协议——OpenAI Chat Completions、OpenAI Responses、Anthropic Messages——存储的值仍是 schema 标识符；适配器新增而本页尚未命名的协议直接显示其标识符。端点占位示例随所选协议变化：OpenAI Chat Completions 与 Responses 显示 `https://gateway.example/v1`，Anthropic Messages 显示 `https://gateway.example`，因为其 SDK 会追加 `/v1/messages`。切换协议会保留已输入的地址。端点必须是可解析的 HTTP 或 HTTPS URL；localhost、IPv4 与 IPv6 字面地址以及自定义端口仍然有效。语法错误会在字段处阻止询问与创建，请求失败则继续作为独立的提供商错误显示。**获取可用模型**通过 `llm/discoverModels` Remote 查询表单显示的端点，因此新增提供商一次即可完成，而非先保存再返回；回复打开的是可搜索选择器而非直接写入，只有点击**添加所选**才会写入。候选项显示模型名称，未提供名称时回退到 id。每行保持单行，文字截断时可悬停查看完整内容。勾选与配置仍使用原始模型 id。每个选中候选会在提供商公布相应信息时，把 id、显示名、上下文窗口、最大输出 token 数和已公布的输入类型复制进可编辑行；已经存在的行保留用户调整过的值。搜索会匹配模型 id 与可选显示名称，且不会清除隐藏项的勾选状态。**全选**会加入可见结果，而**取消全选**会清空全部勾选，以免意外采用隐藏结果。只有用户层单独携带某行时，该行才可删除（删除会恢复组合基线），其确认对话框会指名该提供商。
 
-### 首次运行弹窗
+### 首次运行凭据步骤
 
-版本化声明步骤完成后，DeepSeek 步骤从同一份合并快照投影首次运行就绪状态。用户已经能够到达的**任何**提供商都会直接结束该步骤、不做渲染；只有没有任何提供商的用户才会被询问官方 DeepSeek 密钥。「稍后配置」只完成这次协调器遍历；适配器缺失、路由不活动、合并失败、只读部署或能力不可用时，该步骤不渲染即完成——Models 仍是诊断界面。
+DeepSeek 凭据步骤从同一份合并快照投影首次运行就绪状态。用户已经能够到达的**任何**提供商都会直接结束该步骤、不做渲染；只有没有任何提供商的用户才会被询问官方 DeepSeek 密钥。「稍后配置」只完成这次协调器遍历；适配器缺失、路由不活动、合并失败、只读部署或能力不可用时，该步骤不渲染即完成——Models 仍是诊断界面。
 
 ### 扩展 slot
 
@@ -75,7 +75,7 @@ Host 配置 `credentialOnboarding` 默认为 `true`。Electron preload 标记会
 
 ### 引导协调器
 
-声明步骤在 `src/client/locales.ts` 中持有精确文案，并在 `src/onboarding-copy.ts` 中持有确认版本；回环时它通过既有 settings API 比较并写入 `ui-settings-general.welcomeNoticeVersion`，且只有显式点击「继续」才会记录当前版本。非回环浏览器无法使用这个仅限宿主的 namespace，因此确认只保留在进程内，刷新后声明会再次出现。DeepSeek 步骤面向 `llm-deepseek` 中的 `deepseek-official`，在共享引导模态框内以仅凭据模式渲染既有 `ProviderEditor`；`credentials.set` 仍是唯一的机密写入，且不改变任何提供商设置。
+DeepSeek 步骤面向 `llm-deepseek` 中的 `deepseek-official`，在共享引导模态框内以仅凭据模式渲染既有 `ProviderEditor`；`credentials.set` 仍是唯一的机密写入，且不改变任何提供商设置。
 
 </details>
 

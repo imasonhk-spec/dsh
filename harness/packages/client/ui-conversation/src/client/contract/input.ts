@@ -28,6 +28,28 @@ export interface DraftAttachmentSerializationResult {
   readonly attachments: readonly SubmitAttachment[]
 }
 
+/** Client-only draft proposal, before any Host prompt or optimistic submission. */
+export interface LocalSubmission {
+  readonly sessionId: import('@deepseek-ai/dsh-session/types').SessionId
+  readonly text: string
+  readonly attachmentIds: readonly DraftAttachmentId[]
+  readonly mode: InputSubmitMode
+  readonly signal: AbortSignal
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /**
+     * Handle a local presentation interaction or delegate the unchanged draft.
+     * A rejecting handler never falls through to the Host prompt.
+     * @mode waterfall
+     * @param request - session-addressed draft and cancellation lifetime.
+     * @param next - original submission path; call only for unclaimed drafts.
+     */
+    'conversation/local-submit'(request: LocalSubmission, next: () => Promise<SubmitOutcome>): Promise<SubmitOutcome>
+  }
+}
+
 /** Settled result of a command or default composer submission. */
 export interface SubmitOutcome {
   readonly kind: 'success' | 'error'

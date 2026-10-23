@@ -398,6 +398,8 @@ export type SystemPromptUpdate = 'in-history'
 
 /** Exact-route model metadata resolved by its owning adapter. */
 export interface LlmResolvedModelInfo extends LlmModelInfo {
+  /** Provider-owned maximum output capacity, independent of request defaults. */
+  maxOutputTokens?: number
   /** Provider-owned context capacity when known. */
   context?: LlmModelContext
   /** Adapter-configured per-request output cap materialized when callers omit one. */

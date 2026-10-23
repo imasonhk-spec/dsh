@@ -142,6 +142,8 @@ export interface TurnErrorNode {
 
 /** Durable notice for a turn ended by the per-request output-token cap. */
 export interface TurnMaxTokensNode {
+  /** Host-owned Workbench planning provenance; never inferred from assistant text. */
+  planning?: boolean
   kind: 'turn-max-tokens'
   /** Seq of the owning turn/end event. */
   seq: number

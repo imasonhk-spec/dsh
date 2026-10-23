@@ -787,6 +787,14 @@ export class LlmRuntime extends TypertRemoteService {
         'INVALID_MODEL_INFO',
       )
     }
+    const maxOutputTokens = resolved.maxOutputTokens
+    if (maxOutputTokens !== undefined
+      && (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens <= 0)) {
+      throw new LlmError(
+        `adapter returned invalid maxOutputTokens for provider "${provider}" model "${model}"`,
+        'INVALID_MODEL_MAX_TOKENS',
+      )
+    }
     const defaultMaxTokens = resolved.defaultMaxTokens
     if (defaultMaxTokens !== undefined
       && (!Number.isSafeInteger(defaultMaxTokens) || defaultMaxTokens <= 0)) {
@@ -802,6 +810,7 @@ export class LlmRuntime extends TypertRemoteService {
       ...resolved.description === undefined ? {} : { description: resolved.description },
       ...inputModalities === undefined ? {} : { inputModalities },
       ...context === undefined ? {} : { context: { contextWindow: context.contextWindow } },
+      ...maxOutputTokens === undefined ? {} : { maxOutputTokens },
       ...defaultMaxTokens === undefined ? {} : { defaultMaxTokens },
       ...resolved.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: resolved.systemPromptUpdate },
     }

@@ -19,7 +19,7 @@ import type { ReactNode } from 'react'
 import type {
   PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
-import { CENTER_MIN, clampWidth, computeColumns, RIGHTBAR_DEFAULT_RATIO, RIGHTBAR_MAX_RATIO, RIGHTBAR_MIN, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_COLLAPSED, SIDEBAR_DEFAULT } from './columns.ts'
+import { CENTER_MIN, clampWidth, computeColumns, MOBILE_DRAWER_BREAKPOINT, mobileDrawerWidth, RIGHTBAR_DEFAULT_RATIO, RIGHTBAR_MAX_RATIO, RIGHTBAR_MIN, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_COLLAPSED, SIDEBAR_DEFAULT } from './columns.ts'
 import { DocumentTitle } from './DocumentTitle.tsx'
 import type { createLayoutStore } from './stores.ts'
 import css from './AppFrame.module.css'
@@ -30,11 +30,6 @@ export type AppFrameProps =
   & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.overlay' | 'shell.leading'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & PropsLocale<'common'>
-
-/** Center column grid item (session-body building block). */
-function CenterColumn(props: { children?: ReactNode }) {
-  return <div className={css.centerCol}>{props.children}</div>
-}
 
 /** Subscribe to the main key without subscribing the column frame to each panel id. */
 function MainPanel({ usePanelInfo, renderSlot }: Pick<PropsRuntime<'root'>, 'usePanelInfo'> & PropsRenderSlots<'main'>) {
@@ -180,6 +175,46 @@ export function AppFrame({
   const sidebarPreference = sidebarCollapsed
     ? 0
     : layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : layoutInfo.sidebar
+  const mobile = viewport < MOBILE_DRAWER_BREAKPOINT && !document.documentElement.dataset.platform
+    && !document.documentElement.hasAttribute('data-windows-titlebar')
+  const drawerOpen = mobile && !sidebarCollapsed
+  const drawerRef = useRef<HTMLDivElement | null>(null)
+  const centerRef = useRef<HTMLDivElement | null>(null)
+
+  // Modal drawer: background cannot take focus; ESC/backdrop return to the rail.
+  useEffect(() => {
+    if (!drawerOpen) return
+    const drawer = drawerRef.current
+    const center = centerRef.current
+    if (!drawer || !center) return
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const wasInert = center.inert
+    center.inert = true
+    const focusables = () => Array.from(drawer.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
+    )).filter(el => el.getClientRects().length > 0)
+    ;(focusables()[0] ?? drawer).focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); actions.toggleSidebar(); return }
+      if (event.key !== 'Tab') return
+      const nodes = focusables()
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (!first || !last) { event.preventDefault(); drawer.focus(); return }
+      if (event.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
+        event.preventDefault(); last.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
+        event.preventDefault(); first.focus()
+      }
+    }
+    drawer.addEventListener('keydown', onKey)
+    return () => {
+      center.inert = wasInert
+      drawer.removeEventListener('keydown', onKey)
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [drawerOpen, actions])
+
   const rightbarPreference = layoutInfo.rightbar ?? viewport * RIGHTBAR_DEFAULT_RATIO
   // Desktop reopen controls occupy the frame's shell.leading seat (macOS) or
   // the Windows caption row; neither platform keeps an icon rail.
@@ -189,7 +224,8 @@ export function AppFrame({
   // Opening on a narrow frame collapses the left sidebar. Eligibility must
   // include that space before the occupant's first shown report arrives.
   const normal = computeColumns(viewport, !layoutInfo.rightbarShown && narrow ? 0 : sidebarPreference, rightbarPreference, collapsedWidth)
-  const cols = computeColumns(viewport, sidebarPreference, layoutInfo.rightbarTrack ? rightbarPreference : 0, collapsedWidth)
+  const cols = computeColumns(viewport, mobile ? 0 : sidebarPreference, mobile ? 0 : layoutInfo.rightbarTrack ? rightbarPreference : 0, collapsedWidth)
+  const sidebarWidth = drawerOpen ? mobileDrawerWidth(viewport) : cols.sidebar
   const colsRef = useRef(cols)
   colsRef.current = cols
   const rightbarWidth = useRef(normal.rightbar)
@@ -259,8 +295,8 @@ export function AppFrame({
   const rightbarMax = cols.rightbar === 0 ? 0 : clampWidth(rightbarPreference, RIGHTBAR_MIN, viewport * RIGHTBAR_MAX_RATIO)
   const sidebar = useMemo(() => renderSlot('sidebar', {
     collapsed: sidebarCollapsed,
-    width: cols.sidebar,
-  }), [renderSlot, sidebarCollapsed, cols.sidebar])
+    width: sidebarWidth,
+  }), [renderSlot, sidebarCollapsed, sidebarWidth])
   const main = useMemo(() => (
     <MainPanel usePanelInfo={usePanelInfo} renderSlot={renderSlot} />
   ), [usePanelInfo, renderSlot])
@@ -283,6 +319,8 @@ export function AppFrame({
         gridTemplateColumns:
           `${cols.sidebar}px minmax(${cols.rightbar === 0 ? 0 : CENTER_MIN}px, 1fr) minmax(0px, ${rightbarMax}px)`,
       }}
+      data-mobile={mobile || undefined}
+      data-drawer-open={drawerOpen || undefined}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-rightbar-collapsed={cols.rightbar === 0 || undefined}
       data-rightbar-fullscreen={layoutInfo.rightbarFullscreen || undefined}
@@ -300,11 +338,18 @@ export function AppFrame({
         useSessions={useSessions}
         usePanelInfo={usePanelInfo}
       />
-      <div className={css.sidebarCol}>
+      {drawerOpen && <button type="button" className={css.drawerBackdrop} aria-label="关闭导航 / Close navigation" onClick={() => actions.toggleSidebar()} />}
+      <div ref={drawerRef} className={css.sidebarCol}
+        style={drawerOpen ? { width: sidebarWidth } : undefined}
+        role={drawerOpen ? 'dialog' : undefined}
+        aria-modal={drawerOpen || undefined}
+        aria-label={drawerOpen ? '导航 / Navigation' : undefined}
+        tabIndex={drawerOpen ? -1 : undefined}>
+        {drawerOpen && <button type="button" className={css.drawerClose} onClick={() => actions.toggleSidebar()}>关闭导航 / Close ×</button>}
         {sidebar}
       </div>
       <>
-        <CenterColumn>{main}</CenterColumn>
+        <div ref={centerRef} className={css.centerCol}>{main}</div>
         <RightbarColumn>
           {renderSlot('rightbar', { width: normal.rightbar, viewportWidth: viewport, canShow: normal.rightbar > 0 })}
         </RightbarColumn>
@@ -318,8 +363,8 @@ export function AppFrame({
         </div>
       )}
       {/* The collapsed rail is fixed-width: no resize handle while closed. */}
-      {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
-      {layoutInfo.rightbarShown && !layoutInfo.rightbarFullscreen && normal.rightbar > 0 && (
+      {!mobile && !sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
+      {!mobile && layoutInfo.rightbarShown && !layoutInfo.rightbarFullscreen && normal.rightbar > 0 && (
         <DragHandle side="rightbar" left={viewport - normal.rightbar} onStart={onRightbarStart} onDrag={onRightbarDrag} onEnd={onDragEnd} />
       )}
     </div>

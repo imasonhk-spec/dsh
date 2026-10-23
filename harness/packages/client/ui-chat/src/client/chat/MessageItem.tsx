@@ -139,15 +139,16 @@ function TurnErrorItem({ node, t }: {
 }
 
 /** Persistent, turn-positioned notice for a turn ended at the output-token cap. */
-function TurnMaxTokensItem({ t }: {
+function TurnMaxTokensItem({ t, planning }: {
+  planning?: boolean
   t: ChatViewSlotProps['t']
 }) {
   return (
     <div className={css.turnErrorRow} role="status">
       <StateDot state="warning" className={css.turnErrorDot} />
       <div className={css.turnErrorCopy}>
-        <span className={css.maxTokensTitle}>{t('message.maxTokens')}</span>
-        <span className={css.turnErrorMessage}>{t('message.maxTokens.hint')}</span>
+        <span className={css.maxTokensTitle}>{t(planning ? 'message.planningMaxTokens' : 'message.maxTokens')}</span>
+        <span className={css.turnErrorMessage}>{t(planning ? 'message.planningMaxTokens.hint' : 'message.maxTokens.hint')}</span>
       </div>
     </div>
   )
@@ -368,8 +369,8 @@ export const TurnErrorNodeView = memo(function TurnErrorNodeView({ node, t }: Ch
 })
 
 /** Max-tokens turn-end notice keyed Chat renderer. */
-export const TurnMaxTokensNodeView = memo(function TurnMaxTokensNodeView({ t }: ChatNodeViewProps<'turn-max-tokens'>) {
-  return <TurnMaxTokensItem t={t} />
+export const TurnMaxTokensNodeView = memo(function TurnMaxTokensNodeView({ node, t }: ChatNodeViewProps<'turn-max-tokens'>) {
+  return <TurnMaxTokensItem t={t} planning={node.data.planning === true} />
 })
 
 /** Explicit unknown-surface keyed Chat renderer. */

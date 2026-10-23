@@ -989,7 +989,28 @@ export async function boot(
     // it, and the activation audit describes a live tree — reading `ctx.loader`
     // past this point would throw a TypeError over an app that exited exactly
     // as asked. Re-check after settlement before auditing the tree.
-    await ctx.get('loader')?.await()
+    // [BOOT-RACE 2026-10-23] Some profile trees finish activating every entry but
+    // never settle `loader.await()`, leaving the surface with no /api/remote.mux
+    // registration (UI stuck on "reconnecting"). Bound the wait so the tree that
+    // already settled can still serve; auditStartupEntries below still enforces
+    // required-plugin policy.
+    {
+      const loaderService = ctx.get('loader')
+      if (loaderService !== undefined) {
+        const began = Date.now()
+        await Promise.race<any>([
+          loaderService.await(),
+          new Promise<void>((resolve) => {
+            setTimeout(() => {
+              console.error('[BOOT-RACE] loader settle exceeded 90s; continuing with the settled tree')
+              resolve()
+            }, 90000).unref()
+          }),
+        ])
+        void began
+      }
+    }
+
     if (ctx.get('loader') === undefined) return ctx
     await auditStartupEntries(ctx, binName)
     return ctx
