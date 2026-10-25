@@ -1,4 +1,4 @@
-# 脱敏报告 · dsh-workbench 2.1.0
+# 脱敏报告 · dsh-workbench 2.2.0
 
 - 来源: `/home/lgsj/.dsh/profiles/web/node_modules/@local/dsh-workbench`（8.6 线上活副本）
 - 文件数: 4

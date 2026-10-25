@@ -601,6 +601,23 @@ window.__ModuleLoader__.load({
           })
       }
 
+      /* ---------------- 卸载 ---------------- */
+      function uninstallCap(c) {
+        if (c && (c.id === 'workbench' || c.title === '工作台')) { showToast('工作台框架自身不可卸载', 'error'); return }
+        if (typeof window !== 'undefined' && !window.confirm(`确定彻底卸载「${c.title || c.id}」吗？将从能力包列表中移除对应 bundle（含左侧导航入口），重启后生效。`)) return
+        fetch(API + '/uninstall', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, title: c.title }) })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.ok) {
+              loadCaps().then(setCaps)
+              showToast(data.restartRequired ? `已卸载「${c.title || c.id}」，重启后生效` : `已卸载「${c.title || c.id}」`, 'success')
+            } else {
+              showToast('卸载失败：' + (data && data.reason ? data.reason : '未知错误'), 'error')
+            }
+          })
+          .catch(() => showToast('卸载请求失败', 'error'))
+      }
+
       function confirmReload(item) {
         setModal({ type: 'reload', item })
       }
@@ -713,7 +730,7 @@ window.__ModuleLoader__.load({
               h('div', { className: 'wb-actions' },
                 h('button', { className: 'wb-button primary', type: 'button', onClick: () => openInstalled(c) }, '打开'),
                 up ? h('button', { className: 'wb-button upgrade', type: 'button', onClick: () => startInstall(up.market, 'upgrade') }, '⬆ 升级') : null,
-                h('button', { className: 'wb-button danger', type: 'button', onClick: () => showToast('卸载功能待接入', 'info') }, '卸载'),
+                h('button', { className: 'wb-button danger', type: 'button', onClick: () => uninstallCap(c) }, '卸载'),
               ),
             )
           }))
@@ -735,7 +752,7 @@ window.__ModuleLoader__.load({
               h('div', { className: 'ir-actions' },
                 up ? h('button', { className: 'wb-button upgrade', type: 'button', onClick: (e) => { e.stopPropagation(); startInstall(up.market, 'upgrade') } }, '⬆ 升级') : null,
                 h('button', { className: 'wb-button primary', type: 'button', onClick: (e) => { e.stopPropagation(); openInstalled(c) } }, '打开'),
-                h('button', { className: 'wb-button danger', type: 'button', onClick: (e) => { e.stopPropagation(); showToast('卸载功能待接入', 'info') } }, '卸载'),
+                h('button', { className: 'wb-button danger', type: 'button', onClick: (e) => { e.stopPropagation(); uninstallCap(c) } }, '卸载'),
               ),
             )
           }))
