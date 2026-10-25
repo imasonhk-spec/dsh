@@ -51,6 +51,14 @@ window.__ModuleLoader__.load({
 .wb-hero p{margin:0;max-width:640px;color:#475569;font-size:13.5px;}
 .wb-stat{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.92);border:1px solid var(--wb-border);box-shadow:var(--wb-sh-card);font-size:12px;font-weight:600;color:#334155;white-space:nowrap;}
 .wb-dot{width:8px;height:8px;border-radius:50%;background:#10b981;flex:none;}
+.wb-hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.wb-sync-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;border:1px solid var(--wb-border);background:rgba(255,255,255,.92);box-shadow:var(--wb-sh-card);font:inherit;font-size:12.5px;font-weight:650;color:#334155;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.wb-sync-btn:hover{border-color:var(--wb-accent);color:var(--wb-accent);transform:translateY(-1px);}
+.wb-sync-btn:active{transform:translateY(0);}
+.wb-sync-btn.busy{color:var(--wb-accent);border-color:var(--wb-accent);cursor:wait;}
+.wb-sync-btn.busy .ic{animation:wbSpin 1s linear infinite;display:inline-block;}
+@keyframes wbSpin{to{transform:rotate(360deg)}}
+.wb-sync-time{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:550;color:var(--wb-muted);white-space:nowrap;}
 .wb-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 6px;flex-wrap:wrap;}
 .wb-search{position:relative;display:flex;align-items:center;gap:8px;flex:1;max-width:400px;border:1px solid var(--wb-border);border-radius:12px;padding:8px 12px;background:var(--wb-card);color:#94a3b8;box-shadow:var(--wb-sh-card);transition:border-color .15s,box-shadow .15s;}
 .wb-search:focus-within{border-color:var(--wb-accent);box-shadow:var(--wb-ring);}
@@ -109,6 +117,10 @@ window.__ModuleLoader__.load({
 .wb-hero p{color:#a8b8d4;}
 .wb-tag{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);color:#b6c4dc;}
 .wb-stat{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#cddcf5;}
+.wb-sync-btn{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:#cddcf5;}
+.wb-sync-btn:hover{border-color:#60a5fa;color:#93c5fd;}
+.wb-sync-btn.busy{color:#93c5fd;border-color:rgba(96,165,250,.4);}
+.wb-sync-time{color:#8fa3c4;}
 .wb-kbd{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);}
 .wb-icon{box-shadow:none;}
 .wb-badge{background:rgba(16,185,129,.14);border-color:rgba(52,211,153,.3);color:#6ee7b7;}
@@ -131,8 +143,125 @@ window.__ModuleLoader__.load({
 .wb-toast{background:rgba(23,32,51,.96);border-color:#2a3b57;color:#dbe6f8;}
 .wb-toast.success{background:rgba(9,48,39,.96);border-color:#1d5a49;}
 .wb-search{background:rgba(255,255,255,.04);}
+.wb-tag.ver{background:rgba(99,102,241,.16);border-color:rgba(129,140,248,.32);color:#a5b4fc;}
+.wb-tag.upgrade{background:rgba(249,115,22,.13);border-color:rgba(251,146,60,.34);color:#fdba74;}
+.wb-ver-pill{color:#8fa3c4;}
+.wb-button.upgrade{background:rgba(249,115,22,.13);border-color:rgba(251,146,60,.38);color:#fdba74;}
+.wb-button.upgrade:hover{background:rgba(249,115,22,.22);border-color:rgba(251,146,60,.55);color:#fed7aa;}
 }
 @media (max-width:650px){.wb-root{padding:16px 12px 40px}.wb-hero{padding:24px 20px}.wb-hero h2{font-size:22px}.wb-grid{grid-template-columns:1fr}.wb-sec-hint{display:none}}
+
+/* ===== 三区 Tab（我的工作台 / 我的收藏 / 工作台市场） ===== */
+.wb-zone-tabs{display:flex;gap:6px;margin-bottom:18px;border-bottom:1px solid var(--wb-border);}
+.wb-zone-tab{padding:10px 16px;cursor:pointer;color:var(--wb-muted);font-weight:600;font-size:13.5px;border-bottom:2px solid transparent;transition:.15s;display:flex;align-items:center;gap:8px;user-select:none;}
+.wb-zone-tab:hover{color:var(--wb-fg);}
+.wb-zone-tab.active{color:var(--wb-accent);border-bottom-color:var(--wb-accent);}
+.wb-zone-tab .zt-count{font-size:11px;background:#f1f5f9;color:#94a3b8;padding:1px 8px;border-radius:10px;font-weight:700;}
+.wb-zone-tab.active .zt-count{background:#dbeafe;color:#1d4ed8;}
+.wb-mkt-hero{position:relative;overflow:hidden;border:1px solid rgba(191,219,254,.8);border-radius:18px;background:linear-gradient(135deg,#eff6ff,#f5f3ff);padding:26px 28px;margin-bottom:18px;}
+.wb-mkt-hero h2{margin:0 0 6px;font-size:21px;font-weight:800;}
+.wb-mkt-hero p{margin:0 0 14px;color:var(--wb-muted);font-size:13px;max-width:560px;}
+.wb-mkt-hero code{color:var(--wb-accent);}
+.wb-mkt-stats{display:flex;gap:26px;flex-wrap:wrap;}
+.wb-mkt-stats .m{font-size:20px;font-weight:800;color:var(--wb-fg);}
+.wb-mkt-stats .m span{font-size:12px;color:var(--wb-muted);font-weight:500;margin-left:4px;}
+.wb-cat-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.wb-cat-chip{padding:6px 14px;border-radius:20px;border:1px solid var(--wb-border);background:var(--wb-card);cursor:pointer;font-size:12.5px;font-weight:500;color:var(--wb-muted);transition:.15s;user-select:none;}
+.wb-cat-chip:hover{border-color:var(--wb-accent);color:var(--wb-fg);}
+.wb-cat-chip.active{background:var(--wb-accent);border-color:var(--wb-accent);color:#fff;}
+.wb-mkt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.wb-mkt-card{display:flex;flex-direction:column;background:var(--wb-card);border:1px solid var(--wb-border);border-radius:14px;overflow:hidden;cursor:pointer;transition:.18s;animation:wbEnter .28s cubic-bezier(.16,1,.3,1) both;}
+.wb-mkt-card:hover{transform:translateY(-3px);border-color:#bfdbfe;box-shadow:var(--wb-sh-hover);}
+.wb-mkt-cover{height:104px;display:grid;place-items:center;font-size:36px;position:relative;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);}
+.wb-mkt-cover .cat-ribbon{position:absolute;top:8px;left:8px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.9);color:#475569;}
+.wb-mkt-body{padding:12px 13px;display:flex;flex-direction:column;gap:6px;flex:1;}
+.wb-mkt-body h3{margin:0;font-size:14px;font-weight:700;}
+.wb-mkt-author{font-size:11.5px;color:var(--wb-muted);}
+.wb-mkt-desc{font-size:12px;color:var(--wb-muted);height:32px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.wb-mkt-foot{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:2px;}
+.wb-mkt-foot .dl{margin-left:auto;font-size:11px;color:#94a3b8;}
+.wb-mkt-actions{display:flex;gap:8px;margin-top:10px;}
+.wb-mkt-actions .wb-button{flex:1;justify-content:center;}
+.wb-tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.wb-tag.installed{background:#ecfdf5;color:#047857;border:1px solid rgba(167,243,208,.7);}
+.wb-tag.favorited{background:#fffbeb;color:#b45309;border:1px solid rgba(253,230,138,.6);}
+.wb-tag.cat{background:#f1f5f9;color:var(--wb-muted);}
+.wb-tag.ver{background:#eef2ff;color:#4338ca;border:1px solid rgba(199,210,254,.85);font-family:ui-monospace,SFMono-Regular,monospace;}
+.wb-tag.upgrade{background:#fff7ed;color:#c2410c;border:1px solid rgba(253,186,116,.75);font-weight:650;}
+.wb-card-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:-3px;}
+.wb-ver-pill{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-family:ui-monospace,SFMono-Regular,monospace;color:#94a3b8;}
+.wb-button.upgrade{background:#fff7ed;border-color:#fdba74;color:#c2410c;}
+.wb-button.upgrade:hover{background:#ffedd5;border-color:#fb923c;color:#9a3412;}
+.wb-inst-row{display:flex;align-items:center;gap:14px;background:var(--wb-card);border:1px solid var(--wb-border);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:.15s;cursor:pointer;}
+.wb-inst-row:hover{border-color:#bfdbfe;}
+.wb-inst-row .ir-ic{width:44px;height:44px;border-radius:11px;display:grid;place-items:center;color:#fff;font-size:20px;flex-shrink:0;}
+.wb-inst-row .ir-info{flex:1;min-width:0;}
+.wb-inst-row .ir-name{font-weight:700;font-size:14px;}
+.wb-inst-row .ir-desc{font-size:12px;color:var(--wb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wb-inst-row .ir-meta{display:flex;gap:8px;font-size:11px;color:#94a3b8;margin-top:4px;flex-wrap:wrap;align-items:center;}
+.wb-inst-row .ir-actions{display:flex;gap:8px;flex-shrink:0;}
+.wb-view-toggle{display:inline-flex;border:1px solid var(--wb-border);border-radius:9px;overflow:hidden;background:var(--wb-card);}
+.wb-view-toggle .vt-btn{width:34px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;cursor:pointer;color:#94a3b8;font-size:15px;transition:.15s;}
+.wb-view-toggle .vt-btn.active{color:#fff;background:var(--wb-accent);}
+
+/* ===== 弹窗 ===== */
+.wb-modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px);z-index:1000;display:flex;align-items:center;justify-content:center;animation:wbFade .18s;}
+@keyframes wbFade{from{opacity:0}}
+@keyframes wbPop{from{opacity:0;transform:translateY(14px) scale(.97)}}
+.wb-modal{background:var(--wb-card);border:1px solid #cbd5e1;border-radius:18px;width:640px;max-width:94vw;max-height:90vh;display:flex;flex-direction:column;animation:wbPop .2s;box-shadow:0 24px 60px rgba(15,23,42,.25);}
+.wb-modal.lg{width:780px;}
+.wb-modal-head{display:flex;align-items:center;padding:18px 22px;border-bottom:1px solid var(--wb-border);}
+.wb-modal-head h2{margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:9px;}
+.wb-modal-head .close{margin-left:auto;color:#94a3b8;cursor:pointer;font-size:20px;padding:2px 6px;border-radius:6px;background:none;border:none;}
+.wb-modal-head .close:hover{color:var(--wb-fg);background:#f1f5f9;}
+.wb-modal-body{padding:22px;overflow-y:auto;}
+.wb-modal-foot{padding:16px 22px;border-top:1px solid var(--wb-border);display:flex;justify-content:flex-end;gap:10px;align-items:center;}
+.wb-modal-foot .foot-left{margin-right:auto;color:var(--wb-muted);font-size:12px;}
+
+/* ===== 详情 ===== */
+.wb-detail-hero{display:flex;gap:16px;margin-bottom:16px;}
+.wb-dh-cover{width:96px;height:96px;border-radius:14px;display:grid;place-items:center;font-size:44px;flex-shrink:0;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);}
+.wb-dh-info h2{margin:0 0 4px;font-size:18px;}
+.wb-dh-meta{color:var(--wb-muted);font-size:12px;margin-bottom:8px;}
+.wb-dh-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+.wb-kv{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:13px;}
+.wb-kv .k{color:var(--wb-muted);}
+.wb-kv .v{color:var(--wb-fg);font-weight:500;font-family:ui-monospace,monospace;font-size:12px;}
+.wb-detail-sec{margin-bottom:16px;}
+.wb-ds-t{font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
+
+/* ===== 安装流水线 ===== */
+.wb-pipeline{display:flex;flex-direction:column;gap:0;margin:6px 0 4px;}
+.wb-pipe-step{display:flex;align-items:flex-start;gap:13px;position:relative;padding-bottom:18px;}
+.wb-pipe-step:last-child{padding-bottom:0;}
+.wb-pipe-step::before{content:"";position:absolute;left:13px;top:28px;bottom:0;width:2px;background:var(--wb-border);}
+.wb-pipe-step:last-child::before{display:none;}
+.wb-pipe-node{width:26px;height:26px;border-radius:50%;background:#f1f5f9;border:2px solid #cbd5e1;display:grid;place-items:center;font-size:12px;flex-shrink:0;position:relative;z-index:1;color:#64748b;transition:.2s;}
+.wb-pipe-step .pipe-body{flex:1;padding-top:2px;}
+.wb-pipe-step .pipe-title{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;}
+.wb-pipe-step .pipe-sub{font-size:12px;color:var(--wb-muted);margin-top:3px;}
+.wb-pipe-step.done .wb-pipe-node{background:#10b981;border-color:#10b981;color:#fff;}
+.wb-pipe-step.done::before{background:#10b981;}
+.wb-pipe-step.doing .wb-pipe-node{background:var(--wb-accent);border-color:var(--wb-accent);color:#fff;animation:wbPulse 1s infinite;}
+.wb-pipe-step.fail .wb-pipe-node{background:#ef4444;border-color:#ef4444;color:#fff;}
+.wb-pipe-log{font-family:ui-monospace,monospace;font-size:11px;color:var(--wb-muted);background:#f8fafc;border-radius:8px;padding:6px 10px;margin-top:5px;white-space:pre-wrap;line-height:1.6;}
+
+/* ===== AI 制作对话 ===== */
+.wb-chat-box{background:#f8fafc;border:1px solid var(--wb-border);border-radius:12px;padding:14px;max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+.wb-chat-msg{display:flex;gap:9px;max-width:88%;}
+.wb-chat-msg.ai{align-self:flex-start;}
+.wb-chat-msg.user{align-self:flex-end;flex-direction:row-reverse;}
+.wb-chat-msg .bubble{padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.6;white-space:pre-wrap;}
+.wb-chat-msg.ai .bubble{background:var(--wb-card);border:1px solid var(--wb-border);border-top-left-radius:4px;}
+.wb-chat-msg.user .bubble{background:var(--wb-accent);color:#fff;border-top-right-radius:4px;}
+.wb-chat-msg .who{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:14px;flex-shrink:0;}
+.wb-chat-msg.ai .who{background:linear-gradient(135deg,#7c3aed,#a855f7);}
+.wb-chat-msg.user .who{background:linear-gradient(135deg,#f59e0b,#ef4444);}
+.wb-chat-input-row{display:flex;gap:10px;margin-top:14px;}
+.wb-chat-input-row .wb-search{flex:1;}
+.wb-opt-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.wb-opt-chip{padding:6px 13px;border-radius:20px;border:1px solid var(--wb-accent);color:var(--wb-accent);font-size:12px;cursor:pointer;transition:.15s;background:transparent;}
+.wb-opt-chip:hover{background:rgba(37,99,235,.08);}
 `
 
     function ensureStyle() {
@@ -197,6 +326,35 @@ window.__ModuleLoader__.load({
       return WB_GRADIENTS[n % WB_GRADIENTS.length]
     }
 
+    /* 语义化版本比较：返回 -1 / 0 / 1（a 相对 b）。支持 "1.2.3"、"v1.2.3"、"1.2"、"1.2.3-beta" 等。 */
+    function parseVersionParts(v) {
+      const s = String(v == null ? '' : v).trim().replace(/^v/i, '')
+      const m = s.match(/^\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?/)
+      if (!m) return null
+      const nums = [m[1], m[2], m[3]].map((x) => (x == null ? 0 : parseInt(x, 10)))
+      // 预发布（带 "-"）视为低于正式版；带 "+" 构建元数据不影响比较
+      const pre = s.includes('-') ? -1 : 0
+      return { nums, pre }
+    }
+    function compareVersions(a, b) {
+      const pa = parseVersionParts(a)
+      const pb = parseVersionParts(b)
+      if (!pa && !pb) return 0
+      if (!pa) return -1
+      if (!pb) return 1
+      for (let i = 0; i < 3; i++) {
+        if (pa.nums[i] !== pb.nums[i]) return pa.nums[i] > pb.nums[i] ? 1 : -1
+      }
+      if (pa.pre !== pb.pre) return pa.pre > pb.pre ? 1 : -1
+      return 0
+    }
+
+    /* 规范化版本号展示：无论输入 "1.5.2" 还是 "v1.5.2"，统一输出 "v1.5.2"，避免 "vv" 重复。 */
+    function fmtVersion(v) {
+      const s = String(v == null ? '' : v).trim()
+      return s ? ('v' + s.replace(/^v/i, '')) : ''
+    }
+
     function svgSearch() {
       return h('svg', { viewBox: '0 0 24 24', width: 14, height: 14, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', 'aria-hidden': true },
         h('circle', { cx: 11, cy: 11, r: 7 }),
@@ -258,12 +416,21 @@ window.__ModuleLoader__.load({
     /** @param {object} props 由 slots.register 的 inject 注入：{openPanel} */
     function WorkbenchHome(props) {
       const { openPanel } = props
-      const [caps, setCaps] = useState(null) // null=加载中
-      const [loaded, setLoaded] = useState(readLoaded)
+      const [caps, setCaps] = useState([])         // 已安装能力（我的工作台数据源）
+      const [favorites, setFavorites] = useState([]) // 收藏清单
+      const [market, setMarket] = useState(null)    // 市场数据 {workbenches, categories, meta}
+      const [marketCats, setMarketCats] = useState([])
+      const [marketList, setMarketList] = useState([])
       const [error, setError] = useState('')
+      const [loading, setLoading] = useState(true)
+      const [zone, setZone] = useState('mine')       // mine | fav | mkt
+      const [marketCat, setMarketCat] = useState('all')
       const [search, setSearch] = useState('')
+      const [mineSearch, setMineSearch] = useState('')
+      const [mineView, setMineView] = useState('grid') // list | grid
       const [toasts, setToasts] = useState([])
-      const searchRef = useRef(null)
+      const [modal, setModal] = useState(null)       // 弹窗状态
+      const [syncing, setSyncing] = useState(false)  // 市场同步中
       const toastSeq = useRef(0)
 
       const showToast = useCallback((message, type) => {
@@ -275,190 +442,584 @@ window.__ModuleLoader__.load({
         }, 3000)
       }, [])
 
-      const load = useCallback(() => {
-        // 能力包清单先在拿到时立即渲染；kb / meeting 探活只做增量补充，且各有超时，
-        // 任何一侧挂住都不会让页面永久停留在「正在获取能力包…」。
-        const capabilitiesPromise = fetchWithTimeout(API + '/capabilities', { cache: 'no-store' }, 15000)
-          .then((r) => {
-            if (!r.ok) throw new Error('HTTP ' + r.status)
-            return r.json()
-          })
+      const loadCaps = useCallback(() => {
+        return fetchWithTimeout(API + '/capabilities', { cache: 'no-store' }, 15000)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => (data && Array.isArray(data.capabilities) ? data.capabilities.filter((c) => c && c.id !== 'workbench') : []))
+          .catch(() => [])
+      }, [])
+
+      const loadFavorites = useCallback(() => {
+        return fetchWithTimeout(API + '/favorites', { cache: 'no-store' }, 8000)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => (data && Array.isArray(data.favorites) ? data.favorites : []))
+          .catch(() => [])
+      }, [])
+
+      const loadMarket = useCallback((force) => {
+        return fetchWithTimeout(API + '/market' + (force ? '?force=1' : ''), { cache: 'no-store' }, 15000)
+          .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
-            if (!data || !Array.isArray(data.capabilities)) throw new Error('返回数据格式不正确')
-            setError('')
-            setCaps(data.capabilities.slice())
-            return data.capabilities.slice()
+            if (!data || data.ok === false) return null
+            return data
+          })
+          .catch(() => null)
+      }, [])
+
+      useEffect(() => {
+        let alive = true
+        setLoading(true)
+        Promise.all([loadCaps(), loadFavorites(), loadMarket(false)]).then(([c, f, m]) => {
+          if (!alive) return
+          setCaps(c)
+          setFavorites(f)
+          if (m) {
+            setMarket(m)
+            setMarketCats(m.categories || [])
+            setMarketList(m.workbenches || [])
+          }
+          setError('')
+          setLoading(false)
+        })
+        return () => { alive = false }
+      }, [loadCaps, loadFavorites, loadMarket])
+
+      // 能力清单变更监听
+      useEffect(() => {
+        const sync = () => loadCaps().then((c) => setCaps(c))
+        window.addEventListener('dsh:workbench-capabilities-change', sync)
+        return () => window.removeEventListener('dsh:workbench-capabilities-change', sync)
+      }, [loadCaps])
+
+      /* ---------------- 收藏切换 ---------------- */
+      function toggleFav(item) {
+        const mid = item.market_id != null ? item.market_id : item.id
+        const body = {
+          action: 'toggle',
+          market_id: mid,
+          name: item.name, icon: item.icon, author: item.author,
+          category: item.category, version: item.version, desc: item.desc || item.description,
+        }
+        fetch(API + '/favorites', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.ok) {
+              setFavorites(data.favorites || [])
+              showToast(data.favorited ? `已收藏「${item.name}」` : `已取消收藏「${item.name}」`, data.favorited ? 'success' : 'info')
+            }
+          })
+          .catch(() => showToast('收藏操作失败', 'error'))
+      }
+
+      function isFavorited(item) {
+        const mid = item.market_id != null ? item.market_id : item.id
+        return favorites.some((f) => f.market_id === mid)
+      }
+      function isInstalled(item) {
+        const name = item.name || item.title
+        return caps.some((c) => (c.title || c.id) === name || c.id === (item.entryKey || ''))
+      }
+
+      /* 为已安装能力（我的工作台项）匹配市场上的对应工作台，用于版本比对。 */
+      function findMarketForCap(c) {
+        const key = c.title || c.id
+        if (!key) return null
+        return (marketList || []).find((w) => (w.name || '') === key) || null
+      }
+      /* 返回 { market, current, latest }，仅当市场版本高于已安装版本时。 */
+      function upgradeInfoFor(c) {
+        const cur = c.version
+        if (!cur) return null
+        const m = findMarketForCap(c)
+        const latest = m && m.version
+        if (!m || !latest) return null
+        return compareVersions(latest, cur) > 0 ? { market: m, current: cur, latest } : null
+      }
+
+      /* ---------------- 市场同步（hero 与市场区共用） ---------------- */
+      function manualSync() {
+        if (syncing) return
+        setSyncing(true)
+        loadMarket(true).then((m) => {
+          setSyncing(false)
+          if (m) {
+            setMarket(m)
+            setMarketCats(m.categories || [])
+            setMarketList(m.workbenches || [])
+            showToast('市场已同步', 'success')
+          } else showToast('同步失败', 'error')
+        })
+      }
+      function fmtSyncTime(iso) {
+        if (!iso) return ''
+        try {
+          const d = new Date(iso)
+          if (isNaN(d.getTime())) return ''
+          const p = (n) => String(n).padStart(2, '0')
+          return p(d.getHours()) + ':' + p(d.getMinutes())
+        } catch (e) { return '' }
+      }
+
+      /* ---------------- 打开应用 ---------------- */
+      function openInstalled(c) {
+        if (c.entryKey && openPanel) openPanel(c.entryKey)
+        else showToast('该能力包暂无可打开入口', 'info')
+      }
+
+      /* ---------------- 安装流水线 ---------------- */
+      function startInstall(item, action) {
+        setModal({ type: 'install', item, steps: installSteps(), cur: 0, status: 'running', logs: [] })
+        const body = {
+          name: item.name, author: item.author, category: item.category,
+          version: item.version, desc: item.desc || item.description,
+          package_url: item.package_url || item.download_url || '',
+          package_type: item.package_type || 'release',
+          icon: item.icon,
+          market_id: item.market_id != null ? item.market_id : item.id,
+          action: action || 'install',
+        }
+        fetch(API + '/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+          .then((r) => r.json())
+          .then((data) => {
+            setModal((m) => {
+              if (!m || m.type !== 'install') return m
+              if (data && data.ok) {
+                return { ...m, status: 'done', cur: installSteps().length, logs: data.logs || [] }
+              }
+              return { ...m, status: 'fail', logs: data.logs || [], errMsg: data.error || '安装失败' }
+            })
+            if (data && data.ok) {
+              loadCaps().then(setCaps)
+              showToast(`「${item.name}」安装完成，待重载生效`, 'success')
+            } else {
+              showToast('安装失败：' + (data && data.error ? data.error : '未知错误'), 'error')
+            }
           })
           .catch((e) => {
-            setError('无法加载能力包清单：' + String((e && e.message) || e))
-            setCaps([])
-            return []
+            setModal((m) => (m && m.type === 'install' ? { ...m, status: 'fail', errMsg: String((e && e.message) || e) } : m))
+            showToast('安装请求失败', 'error')
           })
-        const meeting = fetchWithTimeout('/api/meeting-assistant/templates', { cache: 'no-store' }, 5000)
-          .then((response) => response.ok ? response.json() : null)
-          .then((data) => data && Array.isArray(data.templates) ? {
-            id: 'meeting', title: '会议助手', description: '录音与上传、模板生成纪要，按日期整理并支持纪要问答', entryKey: 'cap:meeting', order: 10,
-          } : null)
-          .catch(() => null)
-        const kb = probeKbInstalled().then((ok) => ok ? {
-          id: 'kb', title: '知识库', description: '多模态 RAG 知识库：文档上传解析、@ 引用问答、共享协作与回收站。', entryKey: 'cap:kb', order: 5,
-        } : null).catch(() => null)
-        Promise.all([capabilitiesPromise, meeting, kb]).then(([base, installedMeeting, installedKb]) => {
-          if (!base || base.length === 0) return
-          const capabilities = base.slice()
-          for (const extra of [installedMeeting, installedKb]) {
-            if (extra && !capabilities.some((item) => item && item.id === extra.id)) capabilities.push(extra)
-          }
-          setCaps(capabilities)
+      }
+
+      function confirmReload(item) {
+        setModal({ type: 'reload', item })
+      }
+      function doReload(item) {
+        setModal(null)
+        loadCaps().then(setCaps)
+        showToast(`「${item.name}」已热重载生效，可立即调用`, 'success')
+      }
+
+      /* ---------------- AI 制作 ---------------- */
+      function openMaker() {
+        setModal({ type: 'maker', messages: [{ who: 'ai', text: '你好！我来帮你「制作一个工作台」。请告诉我：这个工作台叫什么名字？主要用来做什么？' }], busy: false })
+      }
+      function sendMakerMsg(text) {
+        setModal((m) => {
+          if (!m || m.type !== 'maker') return m
+          const msgs = m.messages.concat([{ who: 'user', text }])
+          return { ...m, messages: msgs, busy: true }
         })
-      }, [])
-
-      useEffect(() => {
-        load()
-        const sync = () => setLoaded(readLoaded())
-        window.addEventListener('storage', sync)
-        window.addEventListener('dsh:workbench-capabilities-change', sync)
-        return () => {
-          window.removeEventListener('storage', sync)
-          window.removeEventListener('dsh:workbench-capabilities-change', sync)
-        }
-      }, [load])
-
-      // Ctrl/⌘+K 聚焦搜索（对齐参考稿的 ⌘K 快捷键提示）
-      useEffect(() => {
-        const onKey = (e) => {
-          if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-            e.preventDefault()
-            const input = searchRef.current
-            if (input) { input.focus(); input.select && input.select() }
-          }
-        }
-        window.addEventListener('keydown', onKey)
-        return () => window.removeEventListener('keydown', onKey)
-      }, [])
-
-      function setActive(id, active) {
-        const next = { ...readLoaded(), [id]: active }
-        try {
-          localStorage.setItem(loadedStorageKey(), JSON.stringify(next))
-          setLoaded(next)
-          setError('')
-          window.dispatchEvent(new CustomEvent('dsh:workbench-capabilities-change', { detail: { id, loaded: active } }))
-          const item = rows.find((c) => c.id === id)
-          const title = (item && (item.title || item.id)) || id
-          if (active) showToast(`已将「${title}」挂载到工作台快捷栏`, 'success')
-          else showToast(`已将「${title}」从工作台快捷栏移出`, 'info')
-        } catch (_) {
-          setError('无法保存此工作台的能力包设置。请检查浏览器存储权限。')
-        }
+        const body = { prompt: text }
+        fetch(API + '/maker', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+          .then((r) => r.json())
+          .then((data) => {
+            setModal((m) => {
+              if (!m || m.type !== 'maker') return m
+              const msgs = m.messages.slice()
+              if (data && data.ok) {
+                msgs.push({ who: 'ai', text: '正在通过 DSH 内置模型生成能力包源码（会话 ' + (data.sessionId || '').slice(0, 8) + '…）。生成结果将出现在主对话区，完成后本地打包安装即可在「我的工作台」调用。' })
+              } else {
+                msgs.push({ who: 'ai', text: '生成启动失败：' + (data && data.message ? data.message : '未知错误') })
+              }
+              return { ...m, messages: msgs, busy: false }
+            })
+          })
+          .catch((e) => {
+            setModal((m) => (m && m.type === 'maker' ? { ...m, messages: m.messages.concat([{ who: 'ai', text: '请求失败：' + String((e && e.message) || e) }]), busy: false } : m))
+          })
       }
 
+      /* ---------------- 渲染 ---------------- */
       const q = search.trim().toLowerCase()
-      const rows = (caps || []).filter((c) => c && c.id && c.id !== 'workbench')
-      const matchQ = (c) => !q || ((c.title || '') + ' ' + (c.description || '')).toLowerCase().includes(q)
-      const active = rows.filter((c) => loaded[c.id] !== false && matchQ(c))
-      const available = rows.filter((c) => loaded[c.id] === false && matchQ(c))
-      const loadedTotal = rows.filter((c) => loaded[c.id] !== false).length
+      const mq = mineSearch.trim().toLowerCase()
 
-      function card(c, isActive, idx) {
-        return h('article', { key: c.id, className: 'wb-card', style: { animationDelay: Math.min(idx * 40, 240) + 'ms' } },
-          h('div', { className: 'wb-card-top' },
-            h('span', { className: 'wb-icon', 'aria-hidden': true, style: { background: gradientFor(c.id) } }, c.icon || '✦'),
-            h('span', { className: 't' }, c.title || c.id),
-            h('span', { className: 'wb-badge' + (isActive ? '' : ' off') },
-              h('i', { 'aria-hidden': true }),
-              isActive ? '已加载' : '未挂载',
-            ),
-          ),
-          h('div', { className: 'd' }, c.description || '场景能力包'),
-          h('div', { className: 'wb-actions' },
-            h('span', { className: 'wb-ver' }, c.entryKey || c.id),
-            isActive && c.entryKey ? h('button', { className: 'wb-button primary', type: 'button', onClick: () => openPanel && openPanel(c.entryKey) }, svgExternal(), '打开') : null,
-            h('button', { className: 'wb-button' + (isActive ? ' danger' : ''), type: 'button', onClick: () => setActive(c.id, !isActive) },
-              isActive ? '从工作台移除' : h(React.Fragment, null, svgPlus(), '加载到工作台'),
-            ),
-          ),
+      const filteredCaps = mq ? caps.filter((c) => ((c.title || '') + ' ' + (c.description || '') + ' ' + (c.category || '')).toLowerCase().includes(mq)) : caps
+      const filteredMkt = (marketList || []).filter((w) => {
+        if (marketCat !== 'all' && w.category !== marketCat) return false
+        if (q) {
+          const hay = ((w.name || '') + ' ' + (w.author || '') + ' ' + (w.desc || w.description || '') + ' ' + (w.category || '')).toLowerCase()
+          if (!hay.includes(q)) return false
+        }
+        return true
+      })
+
+      const totalDl = (marketList || []).reduce((a, b) => a + (Number(b.downloads) || 0), 0)
+
+      /* ---- 顶部三区 Tab ---- */
+      function zoneTabs() {
+        const tabs = [
+          { key: 'mine', label: '我的工作台', count: caps.length, ic: '📦' },
+          { key: 'fav', label: '我的收藏', count: favorites.length, ic: '⭐' },
+          { key: 'mkt', label: '工作台市场', count: (marketList || []).length, ic: '🏪' },
+        ]
+        return h('div', { className: 'wb-zone-tabs' },
+          tabs.map((t) => h('div', {
+            key: t.key, className: 'wb-zone-tab' + (zone === t.key ? ' active' : ''),
+            onClick: () => setZone(t.key),
+          }, t.ic + ' ' + t.label, h('span', { className: 'zt-count' }, String(t.count)))),
         )
       }
 
-      function sectionHead(title, count, gray, hint) {
-        return h('div', { className: 'wb-section-head' },
-          h('h3', null, title, h('span', { className: 'wb-count' + (gray ? ' gray' : '') }, String(count))),
-          hint ? h('span', { className: 'wb-sec-hint' }, svgInfo(), hint) : null,
+      /* ---- 我的工作台 ---- */
+      function renderMine() {
+        const toolbar = h('div', { className: 'wb-toolbar' },
+          h('div', { style: { fontWeight: 700, fontSize: '14px' } }, '已安装工作台（' + caps.length + '）'),
+          h('div', { style: { flex: 1 } }),
+          h('label', { className: 'wb-search', style: { maxWidth: 260 } },
+            svgSearch(),
+            h('input', { value: mineSearch, placeholder: '搜索名称 / 描述 / 类别', onChange: (e) => setMineSearch(e.target.value) }),
+          ),
+          h('div', { className: 'wb-view-toggle', role: 'tablist' },
+            h('button', { className: 'vt-btn' + (mineView === 'list' ? ' active' : ''), title: '列表视图', onClick: () => setMineView('list') }, '☰'),
+            h('button', { className: 'vt-btn' + (mineView === 'grid' ? ' active' : ''), title: '图标视图', onClick: () => setMineView('grid') }, '▦'),
+          ),
+          h('button', { className: 'wb-button primary', type: 'button', onClick: openMaker }, svgSparkle(), '制作我的工作台'),
         )
+
+        if (filteredCaps.length === 0) {
+          return h('div', null, toolbar, h('div', { className: 'wb-empty' },
+            h('span', { className: 'wb-empty-ic' }, '🔍'),
+            h('b', null, mq ? '没有匹配的工作台' : '还没有已安装的工作台'),
+            h('span', null, mq ? '换个关键词试试，或去「工作台市场」安装更多。' : '去「工作台市场」安装第一个工作台吧。'),
+          ))
+        }
+
+        let body
+        if (mineView === 'grid') {
+          body = h('div', { className: 'wb-grid' }, filteredCaps.map((c, i) => {
+            const up = upgradeInfoFor(c)
+            return h('article', { key: c.id, className: 'wb-card', style: { animationDelay: Math.min(i * 40, 240) + 'ms' } },
+              h('div', { className: 'wb-card-top' },
+                h('span', { className: 'wb-icon', style: { background: gradientFor(c.id) } }, c.icon || '✦'),
+                h('span', { className: 't' }, c.title || c.id),
+                h('span', { className: 'wb-tag installed' }, '● 已安装'),
+              ),
+              h('div', { className: 'd' }, c.description || ''),
+              h('div', { className: 'wb-card-meta' },
+                c.version ? h('span', { className: 'wb-tag ver' }, fmtVersion(c.version)) : null,
+                up ? h('span', { className: 'wb-tag upgrade' }, '↑ 可升级 ' + fmtVersion(up.latest)) : null,
+              ),
+              h('div', { className: 'wb-actions' },
+                h('button', { className: 'wb-button primary', type: 'button', onClick: () => openInstalled(c) }, '打开'),
+                up ? h('button', { className: 'wb-button upgrade', type: 'button', onClick: () => startInstall(up.market, 'upgrade') }, '⬆ 升级') : null,
+                h('button', { className: 'wb-button danger', type: 'button', onClick: () => showToast('卸载功能待接入', 'info') }, '卸载'),
+              ),
+            )
+          }))
+        } else {
+          body = h('div', null, filteredCaps.map((c) => {
+            const up = upgradeInfoFor(c)
+            return h('div', { key: c.id, className: 'wb-inst-row', onClick: () => openInstalled(c) },
+              h('span', { className: 'ir-ic', style: { background: gradientFor(c.id) } }, c.icon || '✦'),
+              h('div', { className: 'ir-info' },
+                h('div', { className: 'ir-name' }, c.title || c.id),
+                h('div', { className: 'ir-desc' }, c.description || ''),
+                h('div', { className: 'ir-meta' },
+                  c.category ? h('span', { className: 'wb-tag cat' }, c.category) : null,
+                  c.version ? h('span', { className: 'wb-tag ver' }, fmtVersion(c.version)) : null,
+                  up ? h('span', { className: 'wb-tag upgrade' }, '↑ 可升级 ' + fmtVersion(up.latest)) : null,
+                  h('span', { className: 'wb-tag installed' }, '● 已安装可用'),
+                ),
+              ),
+              h('div', { className: 'ir-actions' },
+                up ? h('button', { className: 'wb-button upgrade', type: 'button', onClick: (e) => { e.stopPropagation(); startInstall(up.market, 'upgrade') } }, '⬆ 升级') : null,
+                h('button', { className: 'wb-button primary', type: 'button', onClick: (e) => { e.stopPropagation(); openInstalled(c) } }, '打开'),
+                h('button', { className: 'wb-button danger', type: 'button', onClick: (e) => { e.stopPropagation(); showToast('卸载功能待接入', 'info') } }, '卸载'),
+              ),
+            )
+          }))
+        }
+        return h('div', null, toolbar, body)
+      }
+
+      /* ---- 我的收藏 ---- */
+      function renderFav() {
+        if (favorites.length === 0) {
+          return h('div', { className: 'wb-empty' },
+            h('span', { className: 'wb-empty-ic' }, '⭐'),
+            h('b', null, '还没有收藏任何工作台'),
+            h('span', null, '在市场卡片上点击「收藏」即可加入这里。'),
+          )
+        }
+        return h('div', { className: 'wb-mkt-grid' }, favorites.map((f, i) => {
+          const installed = caps.some((c) => (c.title || c.id) === f.name)
+          return h('article', { key: f.market_id, className: 'wb-mkt-card', style: { animationDelay: Math.min(i * 40, 240) + 'ms' } },
+            h('div', { className: 'wb-mkt-cover' }, f.icon || '📦', h('span', { className: 'cat-ribbon' }, f.category || '未分类')),
+            h('div', { className: 'wb-mkt-body' },
+              h('h3', null, f.name),
+              h('div', { className: 'wb-mkt-author' }, '👤 ' + (f.author || '') + (f.version ? ' · ' + fmtVersion(f.version) : '')),
+              h('div', { className: 'wb-mkt-desc' }, f.desc || ''),
+              h('div', { className: 'wb-mkt-foot' },
+                h('span', { className: 'wb-tag favorited' }, '⭐ 已收藏'),
+                installed ? h('span', { className: 'wb-tag installed' }, '已安装') : null,
+                h('span', { className: 'dl' }, f.added_at || ''),
+              ),
+              h('div', { className: 'wb-mkt-actions' },
+                installed
+                  ? h('button', { className: 'wb-button', type: 'button', onClick: () => showToast('已安装，可在「我的工作台」打开', 'info') }, '已安装')
+                  : h('button', { className: 'wb-button primary', type: 'button', onClick: () => startInstall(f) }, '⬇ 安装'),
+                h('button', { className: 'wb-button', type: 'button', onClick: () => toggleFav(f) }, '取消收藏'),
+              ),
+            ),
+          )
+        }))
+      }
+
+      /* ---- 工作台市场 ---- */
+      function renderMkt() {
+        const hero = h('div', { className: 'wb-mkt-hero' },
+          h('h2', null, 'DSH 工作台市场'),
+          h('p', null, '工作台市场源：', h('code', null, 'https://wmk.ilica.cn'), h('br', null), '按类别浏览、收藏、一键半自动安装。每 30 分钟自动同步。'),
+          h('div', { className: 'wb-mkt-stats' },
+            h('div', { className: 'm' }, String((marketList || []).length), h('span', null, '个可用工作台')),
+            h('div', { className: 'm' }, String(marketCats.length), h('span', null, '个类别')),
+            h('div', { className: 'm' }, totalDl.toLocaleString(), h('span', null, '累计下载')),
+            h('div', { className: 'm' }, String(caps.length), h('span', null, '已安装')),
+          ),
+        )
+        const cats = ['all'].concat(marketCats.map((c) => c.name))
+        const chips = h('div', { className: 'wb-cat-chips' },
+          cats.map((c) => h('div', { key: c, className: 'wb-cat-chip' + (marketCat === c ? ' active' : ''), onClick: () => setMarketCat(c) }, c === 'all' ? '全部' : c)),
+        )
+        const toolbar = h('div', { className: 'wb-toolbar' },
+          h('label', { className: 'wb-search' },
+            svgSearch(),
+            h('input', { value: search, placeholder: '搜索名称 / 作者 / 描述', onChange: (e) => setSearch(e.target.value) }),
+          ),
+          h('div', { style: { flex: 1 } }),
+          h('button', {
+            className: 'wb-sync-btn' + (syncing ? ' busy' : ''), type: 'button',
+            onClick: manualSync, disabled: syncing, title: '从 HAN 市场重新同步',
+          },
+            h('span', { className: 'ic', 'aria-hidden': true }, '🔄'),
+            syncing ? '同步中…' : '同步市场',
+          ),
+          h('span', { className: 'wb-sync-time' },
+            market && market.synced_at ? '上次同步 ' + fmtSyncTime(market.synced_at) : '尚未同步',
+          ),
+        )
+
+        let grid
+        if (filteredMkt.length === 0) {
+          grid = h('div', { className: 'wb-empty' },
+            h('span', { className: 'wb-empty-ic' }, '🔍'),
+            h('b', null, '没有匹配的工作台'),
+            h('span', null, '市场暂无工作台，或换个关键词试试。'),
+          )
+        } else {
+          grid = h('div', { className: 'wb-mkt-grid' }, filteredMkt.map((w, i) => {
+            const installed = isInstalled(w)
+            const fav = isFavorited(w)
+            return h('article', { key: w.id, className: 'wb-mkt-card', style: { animationDelay: Math.min(i * 40, 240) + 'ms' }, onClick: () => setModal({ type: 'detail', item: w }) },
+              h('div', { className: 'wb-mkt-cover' }, w.icon || '📦', h('span', { className: 'cat-ribbon' }, w.category || '未分类')),
+              h('div', { className: 'wb-mkt-body' },
+                h('h3', null, w.name),
+                h('div', { className: 'wb-mkt-author' }, '👤 ' + (w.author || '') + (w.version ? ' · ' + fmtVersion(w.version) : '')),
+                h('div', { className: 'wb-mkt-desc' }, w.desc || w.description || ''),
+                h('div', { className: 'wb-mkt-foot' },
+                  installed ? h('span', { className: 'wb-tag installed' }, '已安装') : null,
+                  h('span', { className: 'dl' }, '⬇ ' + (Number(w.downloads) || 0).toLocaleString()),
+                ),
+                h('div', { className: 'wb-mkt-actions' },
+                  installed
+                    ? h('button', { className: 'wb-button', type: 'button', onClick: (e) => { e.stopPropagation(); showToast('已安装，可在「我的工作台」打开', 'info') } }, '已安装')
+                    : h('button', { className: 'wb-button primary', type: 'button', onClick: (e) => { e.stopPropagation(); startInstall(w) } }, '⬇ 安装'),
+                  h('button', { className: 'wb-button', type: 'button', onClick: (e) => { e.stopPropagation(); toggleFav(w) } }, fav ? '★ 已收藏' : '☆ 收藏'),
+                ),
+              ),
+            )
+          }))
+        }
+        return h('div', null, hero, chips, toolbar, grid)
+      }
+
+      /* ---- 弹窗渲染 ---- */
+      function renderModal() {
+        if (!modal) return null
+        if (modal.type === 'detail') {
+          const w = modal.item
+          const installed = isInstalled(w)
+          const fav = isFavorited(w)
+          return h('div', { className: 'wb-modal-mask', onClick: (e) => { if (e.target === e.currentTarget) setModal(null) } },
+            h('div', { className: 'wb-modal' },
+              h('div', { className: 'wb-modal-head' }, h('h2', null, w.name), h('button', { className: 'close', onClick: () => setModal(null) }, '×')),
+              h('div', { className: 'wb-modal-body' },
+                h('div', { className: 'wb-detail-hero' },
+                  h('div', { className: 'wb-dh-cover' }, w.icon || '📦'),
+                  h('div', { className: 'wb-dh-info' },
+                    h('h2', null, w.name),
+                    h('div', { className: 'wb-dh-meta' }, '👤 ' + (w.author || '') + ' · 🏷 ' + (w.category || '') + (w.version ? ' · ' + fmtVersion(w.version) : '')),
+                    h('div', { className: 'wb-dh-tags' },
+                      w.category ? h('span', { className: 'wb-tag cat' }, w.category) : null,
+                      installed ? h('span', { className: 'wb-tag installed' }, '已安装') : null,
+                    ),
+                    h('div', { style: { fontSize: 13, color: 'var(--wb-muted)' } }, w.desc || w.description || ''),
+                  ),
+                ),
+                h('div', { className: 'wb-detail-sec' },
+                  h('div', { className: 'wb-ds-t' }, '包信息'),
+                  h('div', { className: 'wb-kv' },
+                    h('div', { className: 'k' }, '能力 Key'), h('div', { className: 'v' }, 'cap:' + String(w.name || '').toLowerCase().replace(/[^\w]/g, '-')),
+                    h('div', { className: 'k' }, '下载量'), h('div', { className: 'v' }, (Number(w.downloads) || 0).toLocaleString()),
+                    h('div', { className: 'k' }, '包格式'), h('div', { className: 'v' }, 'npm .tgz'),
+                    h('div', { className: 'k' }, '来源'), h('div', { className: 'v' }, 'HAN 市场 · release'),
+                  ),
+                ),
+              ),
+              h('div', { className: 'wb-modal-foot' },
+                h('button', { className: 'wb-button', onClick: () => { toggleFav(w); setModal(null) } }, fav ? '★ 取消收藏' : '☆ 收藏'),
+                h('button', { className: 'wb-button', onClick: () => setModal(null) }, '关闭'),
+                installed
+                  ? h('button', { className: 'wb-button primary', onClick: () => { setModal(null); showToast('已安装，可在「我的工作台」打开', 'info') } }, '已安装')
+                  : h('button', { className: 'wb-button primary', onClick: () => { setModal(null); startInstall(w) } }, '⬇ 半自动安装'),
+              ),
+            ),
+          )
+        }
+        if (modal.type === 'install') {
+          const w = modal.item
+          const steps = modal.steps
+          const cur = modal.cur
+          const status = modal.status
+          return h('div', { className: 'wb-modal-mask' },
+            h('div', { className: 'wb-modal lg' },
+              h('div', { className: 'wb-modal-head' }, h('h2', null, '⬇ 安装「' + w.name + '」'), h('button', { className: 'close', onClick: () => setModal(null) }, '×')),
+              h('div', { className: 'wb-modal-body' },
+                h('div', { className: 'wb-pipeline' },
+                  steps.map((s, i) => {
+                    let cls = 'idle', node = String(i + 1)
+                    if (status === 'done' || i < cur) { cls = 'done'; node = '✓' }
+                    else if (status === 'fail' && i === cur) { cls = 'fail'; node = '✕' }
+                    else if (status === 'running' && i === cur) { cls = 'doing'; node = String(i + 1) }
+                    else if (status === 'running' && i < cur) { cls = 'done'; node = '✓' }
+                    return h('div', { key: s.key, className: 'wb-pipe-step ' + cls },
+                      h('div', { className: 'wb-pipe-node' }, node),
+                      h('div', { className: 'pipe-body' },
+                        h('div', { className: 'pipe-title' }, s.title),
+                        h('div', { className: 'pipe-sub' }, s.desc),
+                        i === cur && modal.logs && modal.logs.length ? h('div', { className: 'wb-pipe-log' }, modal.logs.map((l) => l.message).join('\n')) : null,
+                      ),
+                    )
+                  }),
+                ),
+                status === 'fail' ? h('div', { className: 'wb-error', role: 'alert' }, modal.errMsg || '安装失败') : null,
+              ),
+              h('div', { className: 'wb-modal-foot' },
+                h('div', { className: 'foot-left' }, status === 'done' ? '✓ 安装完成' : status === 'fail' ? '安装失败' : '安装中…'),
+                h('button', { className: 'wb-button', onClick: () => setModal(null) }, status === 'done' ? '稍后' : '取消'),
+                status === 'done'
+                  ? h('button', { className: 'wb-button primary', onClick: () => confirmReload(w) }, '⚡ 重载生效')
+                  : null,
+              ),
+            ),
+          )
+        }
+        if (modal.type === 'reload') {
+          const w = modal.item
+          return h('div', { className: 'wb-modal-mask' },
+            h('div', { className: 'wb-modal' },
+              h('div', { className: 'wb-modal-head' }, h('h2', null, '重载生效'), h('button', { className: 'close', onClick: () => setModal(null) }, '×')),
+              h('div', { className: 'wb-modal-body' },
+                h('div', { style: { fontSize: 13, marginBottom: 12 } }, '安装已完成，将触发 DSH bundle 热重载（无需重启服务，不打断进行中的对话）。'),
+                h('div', { style: { background: 'rgba(37,99,235,.08)', border: '1px solid var(--wb-accent)', borderRadius: 10, padding: '12px 16px', fontSize: 13 } },
+                  '🔄 热重载后「', h('b', null, w.name), '」将出现在左侧导航「工作台」下方能力分组，可立即调用。'),
+              ),
+              h('div', { className: 'wb-modal-foot' },
+                h('button', { className: 'wb-button', onClick: () => setModal(null) }, '稍后'),
+                h('button', { className: 'wb-button primary', onClick: () => doReload(w) }, '⚡ 重载生效'),
+              ),
+            ),
+          )
+        }
+        if (modal.type === 'maker') {
+          return h('div', { className: 'wb-modal-mask' },
+            h('div', { className: 'wb-modal lg' },
+              h('div', { className: 'wb-modal-head' }, h('h2', null, '✨ 制作我的工作台'), h('button', { className: 'close', onClick: () => setModal(null) }, '×')),
+              h('div', { className: 'wb-modal-body' },
+                h('div', { className: 'wb-chat-box' },
+                  modal.messages.map((m, i) => h('div', { key: i, className: 'wb-chat-msg ' + m.who },
+                    h('div', { className: 'who' }, m.who === 'ai' ? '🤖' : '👤'),
+                    h('div', { className: 'bubble' }, m.text),
+                  )),
+                ),
+                h('div', { className: 'wb-opt-chips' },
+                  ['📝 写周报', '📅 排日程', '📊 数据看板', '🧠 知识问答'].map((o) => h('div', { key: o, className: 'wb-opt-chip', onClick: () => sendMakerMsg(o) }, o)),
+                ),
+                h('div', { className: 'wb-chat-input-row' },
+                  h('label', { className: 'wb-search' }, h('input', { id: 'wb-maker-input', placeholder: '描述你的工作台，或点击上方快捷选项…' })),
+                  h('button', { className: 'wb-button primary', disabled: modal.busy, onClick: () => {
+                    const el = document.getElementById('wb-maker-input')
+                    const v = el && el.value ? el.value.trim() : ''
+                    if (v) { if (el) el.value = ''; sendMakerMsg(v) }
+                  } }, modal.busy ? '生成中…' : '发送'),
+                ),
+              ),
+            ),
+          )
+        }
+        return null
       }
 
       return h('div', { className: 'wb-root' },
-        // Hero：光晕 + 脉冲标签 + 标题 + 统计徽标
-        h('div', { className: 'wb-hero' },
-          h('div', { className: 'wb-glow a', 'aria-hidden': true }),
-          h('div', { className: 'wb-glow b', 'aria-hidden': true }),
+        error ? h('div', { className: 'wb-error', role: 'alert' }, error) : null,
+        h('section', { className: 'wb-hero' },
+          h('span', { className: 'wb-glow a', 'aria-hidden': true }),
+          h('span', { className: 'wb-glow b', 'aria-hidden': true }),
           h('div', { className: 'wb-hero-in' },
-            h('div', null,
-              h('div', { className: 'wb-eyebrow' },
+            h('div', { style: { minWidth: 0, flex: '1 1 420px' } },
+              h('span', { className: 'wb-eyebrow' },
                 h('span', { className: 'wb-ping', 'aria-hidden': true }, h('i'), h('b')),
                 'YOUR WORKSPACE · CAPABILITIES',
               ),
-              h('h2', null, '工作台能力管理', h('span', { className: 'wb-tag' }, '即时热插拔')),
-              h('p', null, '把高频核心场景能力放在手边。已加载能力常驻显示在左侧导航「工作台」下方，支持折叠与拖拽排序，随时调用。'),
-            ),
-            h('span', { className: 'wb-stat' }, h('span', { className: 'wb-dot', 'aria-hidden': true }), loadedTotal + ' 个已加载能力'),
-          ),
-        ),
-        error ? h('div', { className: 'wb-error', role: 'alert' }, error,
-          h('button', { className: 'wb-button', type: 'button', onClick: load }, '重试')) : null,
-        // 搜索工具栏（Ctrl/⌘+K 聚焦）
-        h('div', { className: 'wb-toolbar' },
-          h('label', { className: 'wb-search' },
-            svgSearch(),
-            h('input', {
-              ref: searchRef,
-              value: search,
-              placeholder: '搜索能力包名称、场景描述或关键词…',
-              onChange: (e) => setSearch(e.target && e.target.value || ''),
-            }),
-            h('kbd', { className: 'wb-kbd' }, 'Ctrl K'),
-          ),
-        ),
-        caps === null ? h('div', { className: 'wb-empty' }, '正在获取能力包…') :
-          h(React.Fragment, null,
-            h('section', { className: 'wb-section', 'aria-label': '已加载能力包' },
-              sectionHead('已加载能力包', active.length, false, '点击「打开」可在主区直接呼出'),
-              active.length ? h('div', { className: 'wb-grid' }, active.map((c, i) => card(c, true, i))) :
-                h('div', { className: 'wb-empty' },
-                  h('span', { className: 'wb-empty-ic', 'aria-hidden': true }, svgSearch()),
-                  h('b', null, q ? '没有匹配的已加载能力包' : '工作台还没有已加载的能力包'),
-                  h('span', null, q ? '换个关键词试试，或从下方重新挂载。' : '从下方「可用能力包」一键挂载即可。'),
-                ),
-            ),
-            h('section', { className: 'wb-section', 'aria-label': '可用能力包' },
-              sectionHead('可用能力包', available.length, true, '点击「加载到工作台」一键挂载'),
-              available.length ? h('div', { className: 'wb-grid' }, available.map((c, i) => card(c, false, i))) :
-                h('div', { className: 'wb-empty' },
-                  h('span', { className: 'wb-empty-ic', 'aria-hidden': true }, svgCheck()),
-                  h('b', null, rows.length ? (q ? '没有匹配的可加载能力包' : '已安装的能力包都已加载') : '当前 Profile 尚无可用场景能力包'),
-                  h('span', null, rows.length
-                    ? (q ? '换个关键词试试。' : '所有常用能力均已在左侧导航常驻。')
-                    : '新增能力包请前往「插件」安装。'),
-                ),
-            ),
-            h('div', { className: 'wb-footer' },
-              h('span', { className: 'wb-bulb', 'aria-hidden': true }, svgBulb()),
-              h('div', null,
-                h('b', null, '配置规则提示'),
-                h('div', null, '这里的加载与移除只控制工作台快捷入口，不会安装、卸载或停用插件底层数据。新增能力包请前往「插件」统一管理。'),
+              h('h2', null, '工作台',
+                h('span', { className: 'wb-tag' }, '即时热插拔'),
               ),
+              h('p', null, '把高频核心场景能力放在手边。已安装能力常驻显示在左侧导航「工作台」下方，支持折叠与拖拽排序，随时调用。'),
             ),
           ),
-        // Toast 反馈
+        ),
+        zoneTabs(),
+        zone === 'mine' ? renderMine() : zone === 'fav' ? renderFav() : renderMkt(),
+        h('div', { className: 'wb-footer' },
+          h('span', { className: 'wb-bulb', 'aria-hidden': true }, svgBulb()),
+          h('div', null,
+            h('b', null, '配置规则提示'),
+            h('div', null, '已安装能力常驻左侧导航「工作台」下方，支持折叠与拖拽排序。新增能力包请前往「插件」统一管理，或通过市场安装。'),
+          ),
+        ),
         h('div', { className: 'wb-toasts', role: 'status' },
           toasts.map((t) => h('div', { key: t.id, className: 'wb-toast' + (t.type === 'success' ? ' success' : '') + (t.out ? ' out' : '') },
             t.type === 'success' ? svgCheck() : svgSparkle(),
             h('span', null, t.message),
           )),
         ),
+        renderModal(),
       )
     }
+
+    function installSteps() {
+      return [
+        { key: 'download', title: '下载', desc: '从 HAN 下载 release 包' },
+        { key: 'extract', title: '解包', desc: '解压 .tgz 到 bundle 目录' },
+        { key: 'inject', title: '注入', desc: 'package.json 依赖 + cordis.patch.yml bundle 声明' },
+        { key: 'deps', title: '安装依赖', desc: '检查依赖齐全' },
+        { key: 'smoke', title: '自测', desc: '运行 scripts/smoke.mjs + 结构检查' },
+        { key: 'verify', title: '依赖完整性校验', desc: '核对模块是否在 node_modules' },
+        { key: 'record', title: '更新能力清单', desc: '写入 capabilities.json' },
+      ]
+    }
+
 
     /* --------------------------- 知识库桥接页 --------------------------- */
 
