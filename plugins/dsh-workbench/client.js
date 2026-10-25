@@ -604,13 +604,19 @@ window.__ModuleLoader__.load({
       /* ---------------- 卸载 ---------------- */
       function uninstallCap(c) {
         if (c && (c.id === 'workbench' || c.title === '工作台')) { showToast('工作台框架自身不可卸载', 'error'); return }
-        if (typeof window !== 'undefined' && !window.confirm(`确定彻底卸载「${c.title || c.id}」吗？将从能力包列表中移除对应 bundle（含左侧导航入口），重启后生效。`)) return
+        if (typeof window !== 'undefined' && !window.confirm(`确定彻底卸载「${c.title || c.id}」吗？将移除对应能力包 bundle（含左侧导航入口），并自动重启服务生效。`)) return
         fetch(API + '/uninstall', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, title: c.title }) })
           .then((r) => r.json())
           .then((data) => {
             if (data && data.ok) {
               loadCaps().then(setCaps)
-              showToast(data.restartRequired ? `已卸载「${c.title || c.id}」，重启后生效` : `已卸载「${c.title || c.id}」`, 'success')
+              if (data.restarting) {
+                showToast(`已彻底卸载「${c.title || c.id}」，服务正在重启，左侧导航入口即将消失（约几十秒后自动恢复，请稍候刷新）`, 'success')
+              } else if (data.restartRequired) {
+                showToast(`已卸载「${c.title || c.id}」，重启后生效`, 'success')
+              } else {
+                showToast(`已卸载「${c.title || c.id}」`, 'success')
+              }
             } else {
               showToast('卸载失败：' + (data && data.reason ? data.reason : '未知错误'), 'error')
             }
