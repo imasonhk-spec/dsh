@@ -1,4 +1,4 @@
-# 脱敏报告 · dsh-memory-evolve 0.1.1
+# 脱敏报告 · dsh-memory-evolve 0.1.2
 
 - 来源: `/home/lgsj/.dsh/profiles/web/node_modules/dsh-memory-evolve`（8.6 线上活副本）
 - 文件数: 150

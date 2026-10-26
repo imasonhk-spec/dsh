@@ -63,6 +63,7 @@ export const name = 'dsh-memory-evolve'
 // settings / llm 于 2026-08-11 加入——模型配置模块（de_models 工具 +
 // 「模型设置」Tab）需要读取模型目录（settings.get）与供应商/思考等级
 // 元数据（llm.listConfigurableProviders / resolveModelInfo）。
+import { installLicense } from './license-http.mjs'; /* PATCH:V5-o2pack-import */
 export const inject = ['tools', 'systemPrompt', 'agents', 'workspaceRegistry', 'sessionTitle', 'sessionPersistence', 'settings', 'llm']
 
 /** Plugin config defaults (conservative: review off, memory on). */
@@ -1059,6 +1060,7 @@ export function memoryTool(ctx, config, store, queue, getRuntime, archive) {
       render: (_args, value) => [{ type: 'text', text: renderMemoryResult(value) }],
     },
     async execute(args, exec) {
+      { const L = globalThis.__DSH_LIC__ && globalThis.__DSH_LIC__['memory-evolve']; if (L && !(await L.gate.allow()).allowed) throw new Error('本插件需要有效授权（memory-evolve）：请打开 /api/memory-evolve/license/ui 激活或导入离线包'); } /* PATCH:V5-o2pack-guard */
       const target = args.target
       const action = args.action
       const origin = exec?.agent?.session?.header?.origin
@@ -1446,6 +1448,13 @@ export function buildMemoryContext(store, { cwd, branch: declaredBranch, tracks,
  * @param {object} [rawConfig] - raw cordis config.
  */
 export function apply(ctx, rawConfig = {}) {
+  /* PATCH:V5-o2pack-apply */
+  // 授权门禁（C 形态：本插件无 disposers）：插在 apply 最开头，
+  // 保证任何注册/初始化之前门禁就已经可用；清理走 ctx.effect。
+  const __lic = installLicense(ctx, { pluginId: 'memory-evolve', prefix: '/api/memory-evolve', standalone: true });
+  try { if (ctx && typeof ctx.effect === 'function') ctx.effect(() => () => { try { __lic.gate.flush(); __lic.dispose(); __lic.disposeRoute(); } catch {} }, 'lic-flush'); } catch {}
+  try { (globalThis.__DSH_LIC__ = globalThis.__DSH_LIC__ || {})['memory-evolve'] = __lic; } catch {}
+
   const config = resolveConfig(rawConfig)
   const store = new MemoryStore(config.memoryDir, {
     ...config,

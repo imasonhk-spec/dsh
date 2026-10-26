@@ -76,7 +76,7 @@ export function apply(ctx, _config) {
           kind: 'prefix',
           path: '/api/zhihui-opportunity',
           handler(req, res) {
-            if (__lic.intercept(req, res)) return; /* PATCH:V5-o2pack-guard */
+            if (__lic.guard(req, res)) return; /* PATCH:V5-o2pack-guard */
             const url = new URL(req.url || '/', 'http://127.0.0.1')
             const rest = url.pathname.replace(/^\/api\/zhihui-opportunity/, '').replace(/\/$/, '')
             if (rest === '' || rest === '/health') {
