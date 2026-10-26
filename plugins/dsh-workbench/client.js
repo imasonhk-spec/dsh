@@ -612,6 +612,10 @@ window.__ModuleLoader__.load({
                 showToast(`「${item.name}」是工作台框架本体，由部署版本提供（当前 v${act.from || '-'}，市场 v${act.to || '-'}），无需重复安装`, 'success')
               } else if (act && act.mode === 'ahead') {
                 showToast(`「${item.name}」本地已是更新的构建（v${act.from || '-'}），市场为 v${act.to || '-'}，未覆盖`, 'success')
+                              if (act.restartRequired) doReload(item)
+              } else if (act && act.mode === 'enable') {
+                showToast(`「${item.name}」已重新启用（v${act.version || act.from || '-'}），正在重载以显示入口…`, 'success')
+                if (act.restartRequired) doReload(item)
               } else if (act && act.mode === 'upgrade-rejected') {
                 showToast(`「${item.name}」升级已中止（${act.error || '未知原因'}）：已保留当前版本，未做任何覆盖`, 'error')
               } else if (act && act.mode === 'upgrade') {
@@ -718,8 +722,6 @@ window.__ModuleLoader__.load({
         }
         return true
       })
-
-      const totalDl = (marketList || []).reduce((a, b) => a + (Number(b.downloads) || 0), 0)
 
       /* ---- 顶部三区 Tab ---- */
       function zoneTabs() {
@@ -843,16 +845,9 @@ window.__ModuleLoader__.load({
 
       /* ---- 工作台市场 ---- */
       function renderMkt() {
-        const hero = h('div', { className: 'wb-mkt-hero' },
-          h('h2', null, 'DSH 工作台市场'),
-          h('p', null, '工作台市场源：', h('code', null, 'https://wmk.ilica.cn'), h('br', null), '按类别浏览、收藏、一键半自动安装。每 30 分钟自动同步。'),
-          h('div', { className: 'wb-mkt-stats' },
-            h('div', { className: 'm' }, String((marketList || []).length), h('span', null, '个可用工作台')),
-            h('div', { className: 'm' }, String(marketCats.length), h('span', null, '个类别')),
-            h('div', { className: 'm' }, totalDl.toLocaleString(), h('span', null, '累计下载')),
-            h('div', { className: 'm' }, String(caps.length), h('span', null, '已安装')),
-          ),
-        )
+        /* 2026-10-26：市场页头部信息块已按需移除（市场标题、市场源说明、4 项统计）。
+           信息未丢失：市场数量见三区 Tab，类别见筛选胶囊，已安装见「我的工作台」，
+           单包下载量见各卡片。 */
         const cats = ['all'].concat(marketCats.map((c) => c.name))
         const chips = h('div', { className: 'wb-cat-chips' },
           cats.map((c) => h('div', { key: c, className: 'wb-cat-chip' + (marketCat === c ? ' active' : ''), onClick: () => setMarketCat(c) }, c === 'all' ? '全部' : c)),
@@ -906,7 +901,7 @@ window.__ModuleLoader__.load({
             )
           }))
         }
-        return h('div', null, hero, chips, toolbar, grid)
+        return h('div', null, chips, toolbar, grid)
       }
 
       /* ---- 弹窗渲染 ---- */
