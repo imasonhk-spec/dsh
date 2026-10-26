@@ -568,6 +568,19 @@ window.__ModuleLoader__.load({
 
       /* ---------------- 安装流水线 ---------------- */
       function startInstall(item, action) {
+        fetch(API + '/version-check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: item.name, title: item.name, version: item.version, market_id: item.market_id != null ? item.market_id : item.id }) })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.latest) {
+              showToast('当前版本已是最新版本（本机 v' + (data.installed || '-') + '，市场 v' + (data.market || '-') + '），未执行下载与升级', 'success')
+              return
+            }
+            startInstallRun(item, action)
+          })
+          .catch(() => startInstallRun(item, action))
+      }
+
+      function startInstallRun(item, action) {
         setModal({ type: 'install', item, steps: installSteps(), cur: 0, status: 'running', logs: [] })
         const body = {
           name: item.name, author: item.author, category: item.category,
@@ -590,7 +603,25 @@ window.__ModuleLoader__.load({
             })
             if (data && data.ok) {
               loadCaps().then(setCaps)
-              showToast(`「${item.name}」安装完成，待重载生效`, 'success')
+              const act = data.activation
+              if (act && act.ok === false) {
+                showToast(`「${item.name}」安装包已就位，但启用失败：${act.error || '未知原因'}`, 'error')
+              } else if (act && act.mode === 'latest') {
+                showToast(`\u300C${item.name}\u300D\u5F53\u524D\u7248\u672C\u5DF2\u662F\u6700\u65B0\u7248\u672C\uFF08\u672C\u673A v${act.from || '-'}\uFF0C\u5E02\u573A v${act.to || '-'}\uFF09\uFF0C\u672A\u6267\u884C\u4E0B\u8F7D\u4E0E\u5347\u7EA7`, 'success')
+              } else if (act && act.mode === 'framework-protected') {
+                showToast(`「${item.name}」是工作台框架本体，由部署版本提供（当前 v${act.from || '-'}，市场 v${act.to || '-'}），无需重复安装`, 'success')
+              } else if (act && act.mode === 'ahead') {
+                showToast(`「${item.name}」本地已是更新的构建（v${act.from || '-'}），市场为 v${act.to || '-'}，未覆盖`, 'success')
+              } else if (act && act.mode === 'upgrade-rejected') {
+                showToast(`「${item.name}」升级已中止（${act.error || '未知原因'}）：已保留当前版本，未做任何覆盖`, 'error')
+              } else if (act && act.mode === 'upgrade') {
+                showToast(`「${item.name}」已升级 ${act.from || '?'} → ${act.to || '?'}，正在重启以生效…`, 'success')
+                doReload(item)
+              } else if (act && act.restartRequired) {
+                showToast(`「${item.name}」已登记到能力清单，点「重载生效」后即可在「工作台」下使用`, 'success')
+              } else {
+                showToast(`「${item.name}」安装完成，待重载生效`, 'success')
+              }
             } else {
               showToast('安装失败：' + (data && data.error ? data.error : '未知错误'), 'error')
             }
@@ -629,8 +660,19 @@ window.__ModuleLoader__.load({
       }
       function doReload(item) {
         setModal(null)
-        loadCaps().then(setCaps)
-        showToast(`「${item.name}」已热重载生效，可立即调用`, 'success')
+        fetch(API + '/reload', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: item && item.name, market_id: item && item.market_id }) })
+          .then((r) => r.json())
+          .then((data) => {
+            loadCaps().then(setCaps)
+            if (data && data.ok && data.restarting) {
+              showToast(`「${item.name}」已写入能力清单，服务正在重启（约几十秒）。重启后刷新页面，左侧「工作台」下方即可看到入口`, 'success')
+            } else if (data && data.ok) {
+              showToast(`「${item.name}」已生效，可在左侧「工作台」下方调用`, 'success')
+            } else {
+              showToast('重载失败：' + ((data && (data.reason || data.error)) || '未知错误'), 'error')
+            }
+          })
+          .catch(() => showToast('重载请求失败', 'error'))
       }
 
       /* ---------------- AI 制作 ---------------- */
