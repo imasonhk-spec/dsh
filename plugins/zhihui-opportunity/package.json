@@ -1,6 +1,6 @@
 {
   "name": "@local/zhihui-opportunity",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "type": "module",
   "description": "智汇·商机 — DSH 工作台能力包（商机与市场方案）",
