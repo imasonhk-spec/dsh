@@ -1,0 +1,17 @@
+# 2026-09-14  修复 dsh-web 启动 76s 才绑 3080 的问题
+#
+# 根因：ExecStart 用 `pnpm dsh web`，pnpm 的 bootstrap 阶段（早于 ~/.npmrc 加载）
+# 要连 registry.npmjs.org 解析包管理器版本。8.6 整机 DNS 不可用（127.0.0.53 回
+# SERVFAIL），该请求失败后走 JS 层退避（10s + 60s），全程无 TCP 尝试，
+# 表现为「静默 72 秒」→ 总启动 ~76s。实测只认标准环境变量，不认 npm 配置。
+#
+# 方案：让 pnpm 走已存在的反向隧道 HTTP 代理（127.0.0.1:11808），
+# HTTP CONNECT 由代理端解析域名，本地无需 DNS。实测 72s -> 1.1s。
+# NO_PROXY 必须覆盖本机与内网，否则 17321/3080/3090/3100x 的本地互访会被塞进代理。
+[Service]
+Environment="HTTP_PROXY=http://127.0.0.1:11808"
+Environment="HTTPS_PROXY=http://127.0.0.1:11808"
+Environment="http_proxy=http://127.0.0.1:11808"
+Environment="https_proxy=http://127.0.0.1:11808"
+Environment="NO_PROXY=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55"
+Environment="no_proxy=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55"

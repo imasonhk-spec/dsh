@@ -1,0 +1,17 @@
+[Unit]
+Description=DSH port hardening (restrict 3090 to loopback; preserves wg-dsh allow)
+Documentation=file:/etc/dsh-hardening.nft
+After=network-online.target docker.service tailscaled.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/dsh-hardening.nft
+ExecStop=-/usr/sbin/nft delete table inet dsh_hardening
+# 幂等：重复应用先删旧表
+ExecStartPre=-/usr/sbin/nft delete table inet dsh_hardening
+
+[Install]
+WantedBy=multi-user.target

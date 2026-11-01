@@ -1,0 +1,7 @@
+# 2026-10-10: sidecar（多用户网关为每个账号拉起的实例）原先完全不带
+# --trusted-host，于是经 https://dsh.ilica.cn 访问时页面被判为非 loopback，
+# DSH 禁止浏览器读写设置 → 「settings are unavailable in this browser」。
+# 该变量由 dsh-multi-user 的 supervisor 读取并展开成 --trusted-host 参数。
+# 不带端口 = 匹配该主机名的任意端口。多个域名用逗号分隔。
+[Service]
+Environment=DSH_MU_TRUSTED_HOSTS=dsh.ilica.cn

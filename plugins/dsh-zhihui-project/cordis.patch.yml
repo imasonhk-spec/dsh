@@ -1,4 +1,0 @@
-- insert:
-    - id: zhihui-project
-      name: '@local/zhihui-project'
-      config: {}

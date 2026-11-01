@@ -1,4 +1,0 @@
-- insert:
-    - id: zhihui-opportunity
-      name: '@local/zhihui-opportunity'
-      config: {}

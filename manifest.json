@@ -1,0 +1,30 @@
+{
+  "name": "dsh",
+  "unit": "dsh-base",
+  "version": "0.2.0",
+  "previousVersion": "0.1.7-alpha.2",
+  "title": "DSH 底座（harness + 多用户网关 + nginx + 便携 Node）",
+  "kind": "base",
+  "services": [
+    "dsh-web",
+    "dsh-proxy",
+    "dsh-hardening"
+  ],
+  "ports": [
+    3090,
+    3080,
+    3082
+  ],
+  "pluginDir": null,
+  "hasVenv": false,
+  "hasNode": true,
+  "hasHarness": true,
+  "generatedAt": "2026-11-01T22:43:57+08:00",
+  "host": "lgsj",
+  "installScope": [
+    "host-profile",
+    "all-existing-accounts"
+  ],
+  "baseRepo": "imasonhk-spec/dsh",
+  "baseTag": "v0.2.0"
+}

@@ -1,0 +1,26 @@
+# 2026-09-23  修复 DSH「设置-模型」添加 https://api.a77ai.cn 报 could not reach
+# 2026-09-24  追加：ilica.cn 直连可达（实测 401），加入 NO_PROXY 走直连，绕过已停的 relay
+#
+# 根因：8.6 无通用公网出网，原出口仅 192.168.8.7:18888 白名单代理（只放行 tokens.store/npm）。
+# api.a77ai.cn 不在白名单 -> 403；且 8.6 直连 HTTPS 被 NAC/WiFi 防火墙 reset。
+# 8.7 为黑盒（仅开 18888、无 SSH），无法改其白名单。
+#
+# 方案：本机(用户 Windows, Tailscale 100.100.8.7)起 relay 代理(端口 18899)：
+#   - api.a77ai.cn / 47.79.84.2 -> 走 Windows 本机出网代理(127.0.0.1:10808) -> 公网
+#   - 其它外部主机 -> 链式转发给原 192.168.8.7:18888 白名单代理（行为不变）
+# dsh-web 出口统一指向 relay；api.a77ai.cn 因此可经 Windows 出网。
+# relay 脚本: 用户机 C:/01-AI空间/79-RAG/tools/relay_proxy.py (后台运行)
+#
+# 2026-09-24: ilica.cn 实测从 8.6 直连可达(401, 0.54s)，且不在 relay 白名单内，
+#   故直接加入 NO_PROXY 走直连，不受 relay 是否运行影响。
+#
+# 回退：sudo cp -a /etc/systemd/system/dsh-web.service.d/10-proxy.conf.bak-* 10-proxy.conf && daemon-reload && restart dsh-web
+[Service]
+Environment="HTTP_PROXY=http://100.100.8.7:18899"
+Environment="HTTPS_PROXY=http://100.100.8.7:18899"
+Environment="http_proxy=http://100.100.8.7:18899"
+Environment="https_proxy=http://100.100.8.7:18899"
+# NO_PROXY 必须覆盖本机与内网；api.a77ai.cn 故意不在此列 -> 走 relay 出网
+# ilica.cn 直连可达，加入以走直连
+Environment="NO_PROXY=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55,45.76.203.143,ilica.cn"
+Environment="no_proxy=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55,45.76.203.143,ilica.cn"

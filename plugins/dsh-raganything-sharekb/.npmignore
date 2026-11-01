@@ -1,9 +1,0 @@
-# 开发/归档目录不随插件包分发（仅 git 安装时生效，不影响 release 发布件）
-build/
-dist/
-docs/
-packaging/
-releases/
-src/
-tmp_*/
-.tmp_*/

@@ -1,0 +1,16 @@
+[Unit]
+Description=DeepSeek Harness Reverse Proxy (nginx)
+After=network.target dsh-web.service
+Wants=dsh-web.service
+
+[Service]
+Type=forking
+PIDFile=/run/dsh-proxy.pid
+ExecStart=/usr/sbin/nginx -c /etc/nginx/dsh-proxy.conf
+ExecReload=/usr/sbin/nginx -c /etc/nginx/dsh-proxy.conf -s reload
+ExecStop=/usr/sbin/nginx -c /etc/nginx/dsh-proxy.conf -s quit
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

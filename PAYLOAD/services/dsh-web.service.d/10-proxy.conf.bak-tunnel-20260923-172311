@@ -1,0 +1,23 @@
+# 2026-09-21  修复 DSH「设置-模型→自定义模型」could not reach https://tokens.store/v1/models
+#
+# 根因（三层，详见 .workbuddy/memory/2026-09-21.md）：
+#   1) DSH 模型发现 discoverModels 由 **8.6 后端**发起 GET /models。
+#   2) 8.6 直连 tokens.store 被其边缘按源 IP reset（TCP reset by peer）。
+#   3) 本文件原先为修 pnpm 启动慢，把出网全塞进 11808 反向隧道
+#      （隧道对端 = Windows 192.168.8.7），而该隧道到 tokens.store
+#      握手失败 → 报错原文「sslv3 alert handshake failure」。
+#
+# 方案：把代理指向 **Windows 桥接代理 192.168.8.7:18888**。
+#   该桥是白名单转发（tokens.store / registry.npmjs.org / registry.npmmirror.com），
+#   而 Windows 本机能正常 401 到 tokens.store ⇒ 8.6 经桥即可通达。
+#   桥同时放行 npm registry，故 pnpm 启动加速不受影响。
+#
+# 回退：sudo cp -a 10-proxy.conf.bak-20260921 10-proxy.conf && daemon-reload && restart dsh-web
+[Service]
+Environment="HTTP_PROXY=http://192.168.8.7:18888"
+Environment="HTTPS_PROXY=http://192.168.8.7:18888"
+Environment="http_proxy=http://192.168.8.7:18888"
+Environment="https_proxy=http://192.168.8.7:18888"
+# NO_PROXY 必须覆盖本机与内网（含桥自身 192.168.8.7），否则本地互访/桥回环会被塞进代理
+Environment="NO_PROXY=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55"
+Environment="no_proxy=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55"

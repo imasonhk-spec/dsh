@@ -1,4 +1,0 @@
-- insert:
-    - id: policy-analysis
-      name: ./humanizer-zh-qa-v1.mjs
-      config: {}

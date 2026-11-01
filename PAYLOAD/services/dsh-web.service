@@ -1,0 +1,21 @@
+[Unit]
+Description=DeepSeek Harness Web UI
+After=network.target
+
+[Service]
+Environment=DSH_WEB_TOKEN=XENrHAdBlqZh7KeT80jAj568a84nyE0wcAwa8RPklbQ
+Environment=TZ=Asia/Shanghai
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment="DSH_MU_TRUST_PROXY=1"
+Environment="DSH_MU_DSH_BIN=/usr/local/bin/pnpm"
+Environment="DSH_MU_USER_PROFILE_PATCH=- { id: raganything-kb, config: { ragHome: {home}/raganything, sidecarPort: {sidecarPort}, autoStart: true } }"
+Environment="DSH_MU_USER_SEED_LINKS={\"raganything/venv\":\"/home/lgsj/.dsh/raganything/venv\",\"raganything/models\":\"/home/lgsj/.dsh/raganything/models\"}"
+Type=simple
+User=lgsj
+WorkingDirectory=/home/lgsj/deepseek-harness.dsh-v0.1.7-alpha.2
+ExecStart=/usr/local/sbin/dsh-web-start.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

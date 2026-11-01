@@ -1,0 +1,11 @@
+# 2026-09-24  8.6 现已直连公网（WiFi 可上网），不再依赖本机 relay(100.100.8.7:18899)
+# 方案：移除 dsh-web 的 HTTP(S)_PROXY，所有外部端点改直连出网。
+# 验证：curl --noproxy '*' 直连 ilica.cn=401 / registry.npmjs.org=200 / baidu=200 均通。
+# 注意：a77ai 端点 45.76.203.143:25443 走本机 model-tunnel-bridge(127.0.0.1:25443)，
+#       纯本地/隧道，不受出网代理影响；仍保留在 NO_PROXY 以防上游继承代理污染。
+# 回退：sudo cp -a /etc/systemd/system/dsh-web.service.d/10-proxy.conf.bak-* 10-proxy.conf && daemon-reload && restart dsh-web
+[Service]
+# 不设置 HTTP_PROXY/HTTPS_PROXY —— 走系统直连出网
+# 仅保留回环/内网豁免，防止任何上游继承的代理污染本地与内网地址
+Environment="NO_PROXY=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55,45.76.203.143,ilica.cn"
+Environment="no_proxy=localhost,127.0.0.1,::1,0.0.0.0,192.168.8.6,192.168.8.7,10.18.100.4,10.18.100.13,100.100.8.6,100.100.6.55,45.76.203.143,ilica.cn"
