@@ -19,12 +19,45 @@
   "hasVenv": false,
   "hasNode": true,
   "hasHarness": true,
-  "generatedAt": "2026-11-01T22:43:57+08:00",
+  "generatedAt": "2026-11-02T01:14:39+08:00",
   "host": "lgsj",
   "installScope": [
     "host-profile",
     "all-existing-accounts"
   ],
   "baseRepo": "imasonhk-spec/dsh",
-  "baseTag": "v0.2.0"
+  "baseTag": "v0.2.0",
+  "fsEntries": [
+    {
+      "src": "/etc/nginx/dsh-proxy.conf",
+      "dst": "fs/etc/nginx/dsh-proxy.conf",
+      "type": "file",
+      "mode": "0o644",
+      "size": 535,
+      "sha256": "57394c11dd9609644a54e5f694a7fae561b76db68d57a98c213c1b3c939729a4"
+    },
+    {
+      "src": "/etc/dsh-hardening.nft",
+      "dst": "fs/etc/dsh-hardening.nft",
+      "type": "file",
+      "mode": "0o644",
+      "size": 1430,
+      "sha256": "75903518feef1cc5d19e9c63e8aff70606ff43c5b069e7386fe4816ad010f527"
+    }
+  ],
+  "aptProvides": [
+    "/usr/sbin/nft",
+    "/usr/sbin/nginx"
+  ],
+  "runtimeFrom": [],
+  "pathRemap": [
+    {
+      "from": "/home/lgsj/.dsh",
+      "to": "@DSH_HOME@"
+    },
+    {
+      "from": "/home/lgsj",
+      "to": "@USER_HOME@"
+    }
+  ]
 }

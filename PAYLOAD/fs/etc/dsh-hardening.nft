@@ -1,0 +1,32 @@
+#!/usr/sbin/nft -f
+#
+# DSH 端口收敛：3090（多用户网关）只允许本机回环访问。
+#
+# 背景（2026-10-09 实测）：网关进程监听 0.0.0.0:3090，而全部 15 条已建立连接
+# 的对端都是 127.0.0.1（本机 nginx 反向代理）。即 0.0.0.0 绑定纯属多余的暴露面：
+# 局域网/ Wi-Fi / Tailscale / docker 网桥上的任何主机都能以**明文 HTTP**（无 TLS）
+# 直接访问网关 API 并携带会话 Cookie，绕过 nginx 的 TLS 终止。
+#
+# 本表只做一件最小的事：把 3090 收敛到回环，同时保留两条既有合法路径：
+#   1) 本机 nginx -> 127.0.0.1:3090（反代 /mu/ 等路径，实测唯一在用路径）
+#   2) wg-dsh 上的 10.203.77.1（由既有 dsh_mobile_guard 表授权的移动端路径）
+#
+# 3082（nginx TLS 入口，实测 28 条真实客户端连接）**不动**：它是 TLS 终止点，
+# 不是绕过 nginx 的旁路。
+#
+# 回滚：sudo nft delete table inet dsh_hardening && sudo systemctl disable --now dsh-hardening
+
+table inet dsh_hardening {
+	chain input {
+		type filter hook input priority -200; policy accept;
+		ct state established,related accept
+
+		# 合法路径 1：本机回环（nginx 反代）
+		iifname "lo" tcp dport 3090 accept
+		# 合法路径 2：保留既有 wg-dsh 移动端白名单
+		iifname "wg-dsh" ip saddr 10.203.77.1 tcp dport 3090 accept
+
+		# 其余来源一律拒绝
+		tcp dport 3090 counter drop
+	}
+}

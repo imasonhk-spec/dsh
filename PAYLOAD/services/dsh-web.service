@@ -3,7 +3,7 @@ Description=DeepSeek Harness Web UI
 After=network.target
 
 [Service]
-Environment=DSH_WEB_TOKEN=XENrHAdBlqZh7KeT80jAj568a84nyE0wcAwa8RPklbQ
+Environment=DSH_WEB_TOKEN=__GEN__
 Environment=TZ=Asia/Shanghai
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 Environment="DSH_MU_TRUST_PROXY=1"
