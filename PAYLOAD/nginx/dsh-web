@@ -1,0 +1,224 @@
+# ── 客户端真实 IP（登录锁定防伪造）───────────────────────────────
+# 为什么需要它：DSH 网关进程设了 DSH_MU_TRUST_PROXY=1，其 clientIp() 取
+# X-Forwarded-For 的 **第一个** 值，并据此做「按 IP 登录失败锁定」
+# （loginMaxFailures=5 / loginLockMinutes=10，见 dsh-multi-user/lib/gateway.js）。
+# 若下面用 $proxy_add_x_forwarded_for（**追加**），客户端自带的 XFF 会留在
+# 最前面 → 任何人都能轮换伪造值绕过锁定、无限试密码（局域网直连已实测复现）。
+#
+# 规则：只有来自枢纽（WireGuard 10.203.77.1）的请求才采信它写入的 XFF；
+# 其余来源（局域网 / Tailscale / docker 直连）一律用对端地址，丢弃伪造值。
+# 枢纽侧已把 XFF **覆盖**为单个真实客户端 IP，故这里取到的值可信。
+map $remote_addr $dsh_client_ip {
+    # 枢纽经 Tailscale（100.100.7.40）接入；XFF 由枢纽覆盖为真实客户端 IP。
+    # （wg-dsh 隧道已于 2026-10-10 随 netadmin 一并卸载）
+    100.100.7.40   $http_x_forwarded_for;
+    default        $remote_addr;
+}
+
+# 上游（枢纽 nginx / 其它反代）若已完成 TLS 终止，会带 X-Forwarded-Proto；
+# 本地 $scheme 只能看到枢纽→本机这一段（可能是 http），所以优先用上游值。
+# 该变量只供 /xw/ 同源嵌入控制台使用，避免 WebSocket 误生成 ws:// 被浏览器拦。
+map $http_x_forwarded_proto $dsh_upstream_proto {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+
+# ────────────────────────────────────────────────────────────
+
+server {
+    listen 10.18.105.4:3080;
+    listen 100.100.8.6:3080;
+    listen 0.0.0.0:3082 ssl;
+    ssl_certificate /etc/ssl/dsh/server.crt;
+    ssl_certificate_key /etc/ssl/dsh/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    error_page 497 =307 https://$host:3082$request_uri;
+    server_name _;
+
+    client_max_body_size 64m;
+    proxy_buffering off;
+    proxy_request_buffering off;
+
+    location ~ ^/mu/[^/]+/rag/?(.*)$ {
+        set $rag_user $1;
+        rewrite ^/mu/[^/]+/rag/?(.*)$ /mu/rag/$1 break;
+        proxy_pass http://127.0.0.1:3090;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $dsh_client_ip;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        client_max_body_size 512m;
+    }
+
+
+    # 035: SDK, iframe, binary cache and WebSockets all require the same active gateway session.
+    location = /__meeting035_auth {
+        internal;
+        proxy_pass http://127.0.0.1:3090/mu/api/me;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Cookie $http_cookie;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+    location ^~ /meeting-word-editor/ {
+        auth_request /__meeting035_auth;
+        proxy_pass http://172.30.35.2/;
+        proxy_http_version 1.1;
+        proxy_set_header Host 172.30.35.2;
+        proxy_set_header X-Forwarded-Host "$http_host/meeting-word-editor";
+        proxy_set_header X-Forwarded-Proto https;
+        # The gateway session is checked above, NEVER sent to DocumentServer.
+        proxy_set_header Cookie "";
+        proxy_set_header Authorization "";
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        client_max_body_size 10m;
+        proxy_redirect http://172.30.35.2/ /meeting-word-editor/;
+    }
+
+    # ── 汇报助手 × 小歪 R6 控制台同源嵌入（DSH 工作台 iframe）────────────
+    # 控制台（Flask，127.0.0.1:5050）原本只有 http://<ip>:5050。DSH 页面走
+    # https://<host>:3082，iframe 直连会被「混合内容」拦截，且控制台默认
+    # X-Frame-Options: DENY 也拒绝被嵌。这里以 /xw/ 前缀反代，使浏览器侧
+    # 与 DSH 完全同源；控制台侧据 X-Forwarded-Prefix 把响应里的根绝对路径
+    # 改写成 /xw/...（见 deskbot_server/web/embed.py）。
+    location = /xw { return 302 /xw/; }
+    # Browser PCM bridge: retain DSH authentication on every upgrade.
+    location = /xw/api/browser-audio/ws {
+        auth_request /__meeting035_auth;
+        proxy_pass http://127.0.0.1:9000/api/browser-audio/ws;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $dsh_client_ip;
+        proxy_set_header X-Forwarded-Proto $dsh_upstream_proto;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_buffering off;
+    }
+    location ^~ /xw/ {
+        # 与控制台一致：只有已登录 DSH 的浏览器才能进入，避免把免密控制台
+        # 暴露到 dsh.ilica.cn 这类公网入口上。
+        auth_request /__meeting035_auth;
+        proxy_pass http://127.0.0.1:5050/;
+        proxy_http_version 1.1;
+        proxy_set_header Host               $http_host;
+        proxy_set_header X-Real-IP          $remote_addr;
+        proxy_set_header X-Forwarded-For    $dsh_client_ip;
+        proxy_set_header X-Forwarded-Proto  $dsh_upstream_proto;
+        proxy_set_header X-Forwarded-Host   $http_host;
+        proxy_set_header X-Forwarded-Prefix /xw;
+        proxy_set_header Cookie             $http_cookie;
+        proxy_set_header Upgrade            $http_upgrade;
+        proxy_set_header Connection         "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        client_max_body_size 64m;
+    }
+    # 控制台的两个 WebSocket 端点在 deskbot-server :9000（摄像头实时画面、
+    # 设备管线调试）。https 页面里必须走同源 wss://<host>/xw/...，否则被
+    # 浏览器按混合内容拦截。这两个端点自带 ws_token 鉴权，无需网关会话。
+    location = /xw/camera_view {
+        proxy_pass http://127.0.0.1:9000/camera_view;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $dsh_client_ip;
+        proxy_set_header X-Forwarded-Proto $dsh_upstream_proto;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+    }
+    location = /xw/device_pipeline {
+        proxy_pass http://127.0.0.1:9000/device_pipeline;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $dsh_client_ip;
+        proxy_set_header X-Forwarded-Proto $dsh_upstream_proto;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+    }
+
+    include /etc/nginx/snippets/dsh-code-server.conf;
+    include /etc/nginx/snippets/dsh-codex.conf;
+    include /etc/nginx/snippets/dsh-desktop.conf;
+    # 智汇·项目 / 智汇·商机（2026-10-23 部署，片段见 /etc/nginx/zhihui-locations.conf）
+    include /etc/nginx/zhihui-locations.conf;
+
+    location / {
+        proxy_pass http://127.0.0.1:3090;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $dsh_client_ip;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # ── 以下由 install-host.sh 插入（DSH 设备同步服务）；删除本块即可回退 ──
+    # DSH 设备同步服务 · nginx 追加片段
+    #
+    # 用途：把同步 API 挂到 **既有 DSH 入口的同源路径** 下，从而
+    #   - 不新增对外端口、不新增域名、不需要新证书；
+    #   - 天然继承现有 TLS 与访问控制；
+    #   - 不需要修改 dsh-multi-user 插件。
+    #
+    # 安装位置：/etc/nginx/sites-enabled/dsh-web 的 server { } 块内，
+    #           **必须放在 `location /` 之前**（本片段用 ^~ 前缀匹配，优先级已足够，
+    #           但显式前置可读性更好、也避免将来有人改成非 ^~ 匹配时被 / 抢走）。
+    #
+    # 注意（本机实测约束）：
+    #   - nginx 1.24.0 不支持 `http2 on;`，既有站点用的是 `listen 443 ssl http2;`，本片段不涉及。
+    #   - 既有站点在 server 级已设 `proxy_buffering off; proxy_request_buffering off;`，
+    #     这里再次显式声明，避免将来 server 级被改动后同步大文件退化为全量缓冲。
+    #   - 同步协议是**纯 HTTP 长轮询**，不使用 WebSocket，因此不需要 Upgrade/Connection 头，
+    #     也就不依赖任何 http 级 map（既有配置没有 map，加了反而会引入启动失败风险）。
+    
+    location ^~ /_dshsync/ {
+        proxy_pass http://127.0.0.1:8791;
+    
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    
+        # 长轮询最多 55s 挂起，读写超时必须显著大于它
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_connect_timeout 10s;
+    
+        # 关掉缓冲：分块上传/下载要流式透传，否则大文件会占用 nginx 内存并失去进度语义
+        proxy_buffering off;
+        proxy_request_buffering off;
+    
+        # 分块上传的单块上限。必须 >= 客户端 chunkSize（默认 4 MiB）。
+        # 这里给 64 MiB 余量；同步服务自身还有 maxFileSize / 配额两道闸。
+        client_max_body_size 64m;
+        client_body_timeout 300s;
+    }
+    # ── 插入结束 ──
+}

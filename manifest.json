@@ -19,7 +19,7 @@
   "hasVenv": false,
   "hasNode": true,
   "hasHarness": true,
-  "generatedAt": "2026-11-02T02:04:04+08:00",
+  "generatedAt": "2026-11-02T08:30:33+08:00",
   "host": "lgsj",
   "installScope": [
     "host-profile",
@@ -29,12 +29,249 @@
   "baseTag": "v0.2.0",
   "fsEntries": [
     {
+      "src": "/home/lgsj/deepseek-harness.dsh-v0.1.7-alpha.2",
+      "dst": "harness",
+      "type": "harness-dir",
+      "basename": "deepseek-harness.dsh-v0.1.7-alpha.2",
+      "sizeMB": 2091
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/@deepseek-ai",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/@deepseek-ai",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/react",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/react",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/commander",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/commander",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/zod",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/zod",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/undici",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/undici",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/loose-envify",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/loose-envify",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/js-tokens",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/js-tokens",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/@standard-schema",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/@standard-schema",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/node_modules/@liustack",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/node_modules/@liustack",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/package.json",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/package.json",
+      "type": "file",
+      "mode": "0o644",
+      "size": 369,
+      "sanitized": true
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/pnpm-lock.yaml",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/pnpm-lock.yaml",
+      "type": "file",
+      "mode": "0o644",
+      "size": 5028,
+      "sanitized": true
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/cordis.patch.yml",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/cordis.patch.yml",
+      "type": "file",
+      "mode": "0o644",
+      "size": 1176,
+      "sanitized": true
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/cordis.yml",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/cordis.yml",
+      "type": "file",
+      "mode": "0o664",
+      "size": 223,
+      "sha256": "c300dcf2ebc5f02062d6591268d29d3db6fe45e0cb138f5467276fe2ba06076e"
+    },
+    {
+      "src": "/home/lgsj/.dsh/profiles/web/pnpm-workspace.yaml",
+      "dst": "fs/home/lgsj/.dsh/profiles/web/pnpm-workspace.yaml",
+      "type": "file",
+      "mode": "0o664",
+      "size": 61,
+      "sha256": "ae7c5b68e2f157528e62885804e69e88583897b775e03c86fcbe52feaf498aba"
+    },
+    {
       "src": "/etc/nginx/dsh-proxy.conf",
       "dst": "fs/etc/nginx/dsh-proxy.conf",
       "type": "file",
       "mode": "0o644",
       "size": 535,
       "sha256": "57394c11dd9609644a54e5f694a7fae561b76db68d57a98c213c1b3c939729a4"
+    },
+    {
+      "src": "/etc/nginx/conf.d/dsh-rag-users.conf",
+      "dst": "fs/etc/nginx/conf.d/dsh-rag-users.conf",
+      "type": "file",
+      "mode": "0o644",
+      "size": 209,
+      "sha256": "87fef403d9c28c9892e71ceeabeb8c03c64d3eaf247133432916134c54929883"
+    },
+    {
+      "src": "/etc/nginx/dsh-rag-users.map",
+      "dst": "fs/etc/nginx/dsh-rag-users.map",
+      "type": "file",
+      "mode": "0o644",
+      "size": 92,
+      "sha256": "5034931b24d2611996ba86aff918525603ca18ed70ebcdcc3f32d07c1a65d738"
+    },
+    {
+      "src": "/etc/nginx/sites-enabled/dsh-web",
+      "dst": "fs/etc/nginx/sites-enabled/dsh-web",
+      "type": "file",
+      "mode": "0o644",
+      "size": 10893,
+      "sha256": "898ae41686e788123e9d6c551ffcb3cf8f09452d2fe0b31e3cb8583ac2ce571e"
+    },
+    {
+      "src": "/etc/nginx/snippets/dsh-code-server.conf",
+      "dst": "fs/etc/nginx/snippets/dsh-code-server.conf",
+      "type": "file",
+      "mode": "0o644",
+      "size": 749,
+      "sha256": "93091eec62f919eacee88b035145f27450477d82e77086dbce976a930d67c14a"
+    },
+    {
+      "src": "/etc/nginx/snippets/dsh-codex.conf",
+      "dst": "fs/etc/nginx/snippets/dsh-codex.conf",
+      "type": "file",
+      "mode": "0o644",
+      "size": 135,
+      "sha256": "33cdfb6e67dd72b3e65422dc9da5032a7a8ce54d4939ce5ba385d7a51d5c1157"
+    },
+    {
+      "src": "/etc/nginx/snippets/dsh-desktop.conf",
+      "dst": "fs/etc/nginx/snippets/dsh-desktop.conf",
+      "type": "file",
+      "mode": "0o644",
+      "size": 132,
+      "sha256": "cbc3c5f2202ed35c82972938ec8aca8ef324b2733f907257ba61b3741636c637"
+    },
+    {
+      "src": "/etc/nginx/zhihui-locations.conf",
+      "dst": "fs/etc/nginx/zhihui-locations.conf",
+      "type": "file",
+      "mode": "0o644",
+      "size": 1887,
+      "sha256": "7d12a0d6b2c1570f426521c4c324f497a0647c7e2bf5395a6dd7d12feb05dda9"
+    },
+    {
+      "src": "/etc/ssl/dsh/server.crt",
+      "dst": "fs/etc/ssl/dsh/server.crt",
+      "type": "file",
+      "mode": "0o644",
+      "size": 1415,
+      "sha256": "89361101dd0a9a9d2f818e13cd2c310660b6a873d937c1d8cde1464ff451fe39"
+    },
+    {
+      "src": "/etc/ssl/dsh/server.key",
+      "dst": "fs/etc/ssl/dsh/server.key",
+      "type": "file",
+      "mode": "0o600",
+      "size": 1704,
+      "sha256": "473e2f9db25a25a3c630eedf0bb906d0c1fd00a7643bf1351195cf63c13dd48e"
+    },
+    {
+      "src": "/usr/local/sbin/dsh-web-start.sh",
+      "dst": "fs/usr/local/sbin/dsh-web-start.sh",
+      "type": "file",
+      "mode": "0o755",
+      "size": 1104,
+      "sha256": "28c424e657deb82f4b737534c73ce1e8c625a5e365eb4c1530cd0a61f56a7937"
+    },
+    {
+      "src": "/usr/local/bin/pnpm",
+      "dst": "fs/usr/local/bin/pnpm",
+      "type": "symlink",
+      "target": "/home/lgsj/.npm-global/bin/pnpm"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/lib/node_modules/pnpm/bin/pnpm.mjs",
+      "dst": "fs/home/lgsj/.npm-global/lib/node_modules/pnpm/bin/pnpm.mjs",
+      "type": "file",
+      "mode": "0o775",
+      "size": 1464,
+      "sha256": "ff3224d46b47fbb24a7e9fe15fededef7e00892d07d4e376b6762d4899906bfd"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/lib/node_modules/pnpm",
+      "dst": "fs/home/lgsj/.npm-global/lib/node_modules/pnpm",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/lib/node_modules/@deepseek-ai",
+      "dst": "fs/home/lgsj/.npm-global/lib/node_modules/@deepseek-ai",
+      "type": "dir"
+    },
+    {
+      "src": "/usr/local/node",
+      "dst": "fs/usr/local/node",
+      "type": "dir"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/bin/pnpm",
+      "dst": "fs/home/lgsj/.npm-global/bin/pnpm",
+      "type": "symlink",
+      "target": "../lib/node_modules/pnpm/bin/pnpm.mjs"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/bin/pn",
+      "dst": "fs/home/lgsj/.npm-global/bin/pn",
+      "type": "symlink",
+      "target": "../lib/node_modules/pnpm/bin/pnpm.mjs"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/bin/pnpx",
+      "dst": "fs/home/lgsj/.npm-global/bin/pnpx",
+      "type": "symlink",
+      "target": "../lib/node_modules/pnpm/bin/pnpx.mjs"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/bin/pnx",
+      "dst": "fs/home/lgsj/.npm-global/bin/pnx",
+      "type": "symlink",
+      "target": "../lib/node_modules/pnpm/bin/pnpx.mjs"
+    },
+    {
+      "src": "/home/lgsj/.npm-global/bin/dsh",
+      "dst": "fs/home/lgsj/.npm-global/bin/dsh",
+      "type": "symlink",
+      "target": "../lib/node_modules/@deepseek-ai/dsh/lib/bin.js"
+    },
+    {
+      "src": "/usr/local/bin/node",
+      "dst": "fs/usr/local/bin/node",
+      "type": "symlink",
+      "target": "/usr/local/node/bin/node"
     },
     {
       "src": "/etc/dsh-hardening.nft",

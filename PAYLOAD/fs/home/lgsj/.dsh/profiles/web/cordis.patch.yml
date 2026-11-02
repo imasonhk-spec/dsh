@@ -1,0 +1,35 @@
+# DSH profile patch（由 dsh-base 安装器生成的中立骨架）
+#
+# 本文件只保留与具体机器无关的**行为性**默认值。源机专属内容
+# （模型端点 / API key / welcome 版本 / 业务插件 insert 块）一律不带到目标机，
+# 请在 DSH「设置 → 模型」里按本机实际情况配置。
+#
+# 注意：业务插件**不要**在这里 insert —— 各插件包安装时会自动写进
+# package.json 的 dsh.profile.bundles，由 loader 统一挂载；
+# 在此重复 insert 同名 id 会让 Loader 崩（repeated id）。
+
+- id: repeat-tool-reminder
+  config:
+    toolTurnNotice: 60
+    toolTurnLimit: 150
+    turnBudgetNotice: 120
+    turnCallLimit: 400
+
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+    defaultPreset: danger-full-access
+
+# 2026-10-23: hmr Service.init 卡在 loadDependencies(mainJob)，导致 loader.await 不 settle
+- id: hmr
+  disabled: true
