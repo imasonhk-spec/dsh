@@ -1,4 +1,4 @@
-# dsh 0.2.0
+# dsh 0.1.7-alpha.2-v2
 
 DSH 底座（harness + 多用户网关 + nginx + 便携 Node）
 
@@ -20,8 +20,8 @@ DSH 底座（harness + 多用户网关 + nginx + 便携 Node）
 ## 安装
 
 ```bash
-tar -xzf dsh-0.2.0.tar.gz
-cd dsh-0.2.0
+tar -xzf dsh-0.1.7-alpha.2-v2.tar.gz
+cd dsh-0.1.7-alpha.2-v2
 sudo ./install.sh
 ```
 
@@ -29,7 +29,7 @@ sudo ./install.sh
 
 | 参数 | 作用 |
 |---|---|
-| `--with-base` | 本机没有 DSH 时，自动从 `imasonhk-spec/dsh` 拉取底座并安装 |
+| `--with-base` | 本机没有 DSH 时，自动从 `imasonhk-spec/dsh` 拉取底座 `v0.1.7-alpha.2-v2` 并安装 |
 | `--dry-run` | 只打印将要做什么，不落盘 |
 | `--skip-restart` | 装完不重启 dsh-web |
 | `--force` | 覆盖已有的 venv / 配置 |

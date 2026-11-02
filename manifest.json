@@ -1,7 +1,7 @@
 {
   "name": "dsh",
   "unit": "dsh-base",
-  "version": "0.2.0",
+  "version": "0.1.7-alpha.2-v2",
   "previousVersion": "0.1.7-alpha.2",
   "title": "DSH 底座（harness + 多用户网关 + nginx + 便携 Node）",
   "kind": "base",
@@ -16,17 +16,19 @@
     3082
   ],
   "pluginDir": null,
+  "bundledComponents": [],
+  "extraBundlesFirst": false,
   "hasVenv": false,
   "hasNode": true,
   "hasHarness": true,
-  "generatedAt": "2026-11-02T08:30:33+08:00",
+  "generatedAt": "2026-11-02T08:56:45+08:00",
   "host": "lgsj",
   "installScope": [
     "host-profile",
     "all-existing-accounts"
   ],
   "baseRepo": "imasonhk-spec/dsh",
-  "baseTag": "v0.2.0",
+  "baseTag": "v0.1.7-alpha.2-v2",
   "fsEntries": [
     {
       "src": "/home/lgsj/deepseek-harness.dsh-v0.1.7-alpha.2",
